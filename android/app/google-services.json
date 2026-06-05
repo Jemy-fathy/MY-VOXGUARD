@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "937671622047",
+    "project_id": "voxguard-1a6d7",
+    "storage_bucket": "voxguard-1a6d7.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:937671622047:android:40114e07d7fc771efe51aa",
+        "android_client_info": {
+          "package_name": "com.example.vox_guard"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCitABlzRsrKy0OJH3UH24DP2L-P62T0Fs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
