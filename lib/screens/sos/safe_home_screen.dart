@@ -5,7 +5,6 @@ import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-// 🌟 استيراد مكتبة الخلفية لإدارتها من زر الأمان
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'dart:ui' as ui;
 import 'home_screen.dart';
@@ -74,7 +73,7 @@ class _SafeHomeScreenState extends State<SafeHomeScreen>
     });
   }
 
-  // --- ميثود إيقاف الاستغاثة وإرسال إشارة الأمان --- book---------- 
+  // --- ميثود إيقاف الاستغاثة وإرسال إشارة الأمان ------------ 
   Future<void> _stopSOS() async {
     final prefs = await SharedPreferences.getInstance();
     final int? currentSosId = widget.sosId ?? prefs.getInt('current_sos_id');

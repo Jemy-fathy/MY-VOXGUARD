@@ -283,14 +283,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  Widget _quickActions() {
+  Widget _quickActions() { 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 22),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           _actionItem('call.png', 'Fake call', () => Navigator.push(context, MaterialPageRoute(builder: (context) => const FakeCallScreen()))),
-          _actionItem('location.png', 'Share location', () => Navigator.push(context, MaterialPageRoute(builder: (context) => const StartTripScreen()))),
+          _actionItem('location.png', 'Start Trip', () => Navigator.push(context, MaterialPageRoute(builder: (context) => const StartTripScreen()))),
           _actionItem('mic.png', 'Voice password', () => Navigator.push(context, MaterialPageRoute(builder: (context) => const VoicePasswordIntroScreen()))),
         ],
       ),

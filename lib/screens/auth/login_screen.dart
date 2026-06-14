@@ -84,7 +84,6 @@ class _LoginScreenState extends State<LoginScreen> {
           await prefs.setString('auth_token', data['token']);
         }
         
-        // ... (بقية كود حفظ بيانات المستخدم كما هي)
 
         // --- التعديل هنا: حفظ بيانات المستخدم بالكامل ---
         if (data['user'] != null) {
@@ -97,7 +96,6 @@ class _LoginScreenState extends State<LoginScreen> {
           String fullName = "$firstName $lastName".trim();
           String profilePic = user['profile_photo_url'] ?? "";
 
-          // استخدام await لضمان الحفظ قبل الانتقال
           await prefs.setString('user_id', userId);
           await prefs.setString('user_name', fullName.isNotEmpty ? fullName : "User");
           await prefs.setString('user_image', profilePic);
@@ -108,7 +106,6 @@ class _LoginScreenState extends State<LoginScreen> {
         if (!mounted) return;
         _showMessage("Welcome back!");
         
-        // استخدام pushNamedAndRemoveUntil لضمان تحديث الـ Home
         Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
       } else {
         _showMessage(data["message"] ?? "Invalid credentials");
@@ -162,7 +159,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // بناء الـ UI (نفس الكود الخاص بكِ تماماً دون أي تغيير)
     return Scaffold(
       body: Container(
         width: double.infinity,

@@ -18,6 +18,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool panicButtonStatus = true;
   bool notificationStatus = true;
   bool voicePasswordStatus = true;
+  bool emotionDetectionStatus = true; 
 
   final Color brandColor = const Color(0xFFCB30E0);
 
@@ -71,7 +72,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ],
                   ),
                 ),
-                // Content Sheet
                 Container(
                   width: double.infinity,
                   decoration: const BoxDecoration(
@@ -130,8 +130,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           onTap: () => Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) =>
-                                  const UpdatePasswordScreen(),
+                              builder: (context) => const UpdatePasswordScreen(),
                             ),
                           ),
                         ),
@@ -151,8 +150,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           imageAsset: 'images/panic.png',
                           hasSwitch: true,
                           currentValue: panicButtonStatus,
-                          onChanged: (v) =>
-                              setState(() => panicButtonStatus = v),
+                          onChanged: (v) => setState(() => panicButtonStatus = v),
+                        ),
+                        _buildSettingTile(
+                          Icons.emoji_emotions_outlined,
+                          'Emotion Detection',
+                          hasSwitch: true,
+                          currentValue: emotionDetectionStatus,
+                          onChanged: (v) => setState(() => emotionDetectionStatus = v),
                         ),
                         const Divider(
                           thickness: 1.5,
@@ -166,8 +171,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           imageAsset: 'images/Notification.png',
                           hasSwitch: true,
                           currentValue: notificationStatus,
-                          onChanged: (v) =>
-                              setState(() => notificationStatus = v),
+                          onChanged: (v) => setState(() => notificationStatus = v),
                         ),
                         _buildSettingTile(
                           null,
@@ -242,12 +246,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
         trailing: hasArrow
             ? const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey)
             : (hasSwitch
-                  ? CupertinoSwitch(
-                      activeColor: brandColor,
-                      value: currentValue,
-                      onChanged: onChanged,
-                    )
-                  : null),
+                ? CupertinoSwitch(
+                    activeColor: brandColor,
+                    value: currentValue,
+                    onChanged: onChanged,
+                  )
+                : null),
       ),
     );
   }
@@ -262,10 +266,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
         border: Border.all(color: const Color(0xFF4A80F1), width: 2),
       ),
       child: TextButton(
-        onPressed: ()=> Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const DeleteAccountScreen(),)),
+        onPressed: () => Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const DeleteAccountScreen(),
+          ),
+        ),
         child: const Text(
           'Log out',
           style: TextStyle(
