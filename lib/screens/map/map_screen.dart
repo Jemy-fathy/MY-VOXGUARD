@@ -7,6 +7,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:vox_guard/screens/map/manage_safety_places.dart';
 import '../../config/colors.dart'; 
 import '../sos/emergency_screen.dart';
@@ -182,11 +183,11 @@ class _FullMapScreenState extends State<FullMapScreen> {
   }
 
   Future<void> _shareLiveLocationSOS() async {
+    final prefs = await SharedPreferences.getInstance();
+    String? token = prefs.getString('auth_token');
+
     try {
       Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
-      
-      final prefs = await SharedPreferences.getInstance();
-      String? token = prefs.getString('auth_token');
 
       final response = await http.post(
         Uri.parse("$_baseUrl/sos/trigger"),
@@ -207,27 +208,79 @@ class _FullMapScreenState extends State<FullMapScreen> {
         int activeSosId = resData['data'] != null ? resData['data']['id'] : resData['id'];
 
         debugPrint("✅ Live Location SOS Started. ID: $activeSosId");
-
-        final bgService = FlutterBackgroundService();
-        bool isRunning = await bgService.isRunning();
-        if (!isRunning) {
-          await bgService.startService();
-        }
-        
-        bgService.invoke('startSOS', {
-          'sos_id': activeSosId,
-          'token': token,
-          'share_location': true,
-          'record_audio': true,
-        });
-
-        if (mounted) {
-          _navigateToEmergency(); 
-        }
+        await _launchSosGuard(sosId: activeSosId, token: token, isMock: false);
+        return;
       }
+
+      debugPrint("⚠️ Live Location SOS rejected (${response.statusCode}).");
     } catch (e) {
       debugPrint("❌ Error starting Live Location SOS: $e");
     }
+
+    // Backend unreachable / rejected (e.g. local host down) → start a mock SOS so
+    // live-location sharing still activates instead of silently doing nothing.
+    final int mockId = -(DateTime.now().millisecondsSinceEpoch ~/ 1000);
+    await prefs.setBool('sos_is_mock', true);
+    debugPrint("🟡 Live Location SOS started in MOCK mode. ID: $mockId");
+    await _launchSosGuard(sosId: mockId, token: token ?? 'mock-token', isMock: true);
+  }
+
+  /// Persists the active session, starts the background guard and opens the
+  /// emergency screen. Shared by the real and mock live-location SOS paths.
+  Future<void> _launchSosGuard({
+    required int sosId,
+    required String? token,
+    required bool isMock,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('current_sos_id', sosId);
+    await prefs.setBool('sos_is_mock', isMock);
+
+    // Audio recording needs RECORD_AUDIO granted in the FOREGROUND: the
+    // background isolate can't show a permission prompt, so if the mic isn't
+    // already granted it silently skips recording. Resolve it here (where we
+    // have a UI context) and only ask the guard to record when it's available.
+    final bool canRecordAudio = await _ensureMicPermission();
+
+    final bgService = FlutterBackgroundService();
+    if (!await bgService.isRunning()) {
+      await bgService.startService();
+    }
+
+    bgService.invoke('startSOS', {
+      'sos_id': sosId,
+      'token': token,
+      'share_location': true,
+      'record_audio': canRecordAudio,
+    });
+
+    if (mounted) {
+      _navigateToEmergency();
+    }
+  }
+
+  /// Ensures the microphone permission is granted before the SOS guard starts.
+  /// Must run in the foreground — the background isolate can't prompt for it.
+  /// Returns whether audio recording can proceed.
+  Future<bool> _ensureMicPermission() async {
+    var status = await Permission.microphone.status;
+    if (status.isGranted) return true;
+
+    if (status.isPermanentlyDenied) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Microphone is off. Enable it in Settings to record audio evidence.',
+            ),
+          ),
+        );
+      }
+      return false;
+    }
+
+    status = await Permission.microphone.request();
+    return status.isGranted;
   }
 
   Future<void> _fetchZonesFromServer() async {

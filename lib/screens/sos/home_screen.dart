@@ -10,6 +10,7 @@ import 'package:record/record.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:ui' as ui;
 import 'emergency_screen.dart';
+import 'ai_monitor.dart';
 import '../fake_call/fake_call_screen.dart';
 import '../map/map_screen.dart';
 import '../profile/profile_screen.dart';
@@ -65,54 +66,41 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   Future<void> _runAILoop() async {
     while (_isAiActive && mounted) {
-      if (_selectedIndex == 0) {
-        await Future.delayed(const Duration(seconds: 10)); // التسجيل كل 10 ثوان
-        final path = await _audioRecorder.stop();
-        if (path != null) {
-          await _processBuffer(path);
-          final file = File(path);
-          if (await file.exists()) await file.delete();
+      final prefs = await SharedPreferences.getInstance();
+      final bool sosActive = prefs.getBool(kSosActiveKey) ?? false;
+
+      // While an SOS is active the BACKGROUND service owns the mic and runs the
+      // same pipeline, so the foreground loop steps aside to avoid contention.
+      // It also pauses when the home tab isn't selected.
+      if (sosActive || _selectedIndex != 0) {
+        if (await _audioRecorder.isRecording()) {
+          await _audioRecorder.stop();
         }
-        await _startContinuousRecording();
-      } else {
         await Future.delayed(const Duration(seconds: 1));
+        continue;
+      }
+
+      if (!await _audioRecorder.isRecording()) {
+        await _startContinuousRecording();
+      }
+      await Future.delayed(kAiChunkDuration); // 2-minute chunks
+      final path = await _audioRecorder.stop();
+      if (path != null) {
+        await _processBuffer(path);
+        final file = File(path);
+        if (await file.exists()) await file.delete();
       }
     }
   }
 
   Future<void> _processBuffer(String filePath) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final String? token = prefs.getString('auth_token');
-      final String userId = prefs.getString('user_id') ?? "0";
-
-      // 1. تحويل الصوت لنص
-      var sttRequest = http.MultipartRequest('POST', Uri.parse("http://192.168.1.191:8003/transcribe"));
-      sttRequest.files.add(await http.MultipartFile.fromPath('audio', filePath));
-      var sttResponse = await sttRequest.send();
-      var sttData = jsonDecode(await http.Response.fromStream(sttResponse).then((r) => r.body));
-      String detectedText = sttData['text']?.toString() ?? "nothing";
-      
-      if (detectedText != "nothing" && detectedText != "null") {
-        // 2. التحقق من الخطر
-        var laravelResponse = await http.post(
-          Uri.parse("http://192.168.1.191:8000/api/dictionary/check"),
-          headers: {"Authorization": "Bearer $token", "Accept": "application/json"},
-          body: {'text': detectedText, 'location_text': _locationText},
-        );
-        
-        if (laravelResponse.statusCode == 200 && jsonDecode(laravelResponse.body)['danger_detected'] == true) {
-          // 3. تحليل المشاعر
-          var emotionRequest = http.MultipartRequest('POST', Uri.parse("http://192.168.1.191:8001/analyze-smart/"));
-          emotionRequest.files.add(await http.MultipartFile.fromPath('file', filePath));
-          emotionRequest.fields['user_id'] = userId;
-          var emotionResponse = await emotionRequest.send();
-          var emotionData = jsonDecode(await http.Response.fromStream(emotionResponse).then((r) => r.body));
-          
-          if (emotionData['trigger_sos'] == true) _triggerEmergencyAuto();
-        }
-      }
-    } catch (e) { debugPrint("AI Error: $e"); }
+    // Send the 2-minute recording to the backend for storage (best effort)…
+    await uploadRecordingToBackend(filePath);
+    // …and run the AI pipeline (STT → danger check → emotion); auto-trigger an
+    // SOS if the analysis recommends one.
+    final bool shouldTrigger =
+        await analyzeAudioChunk(filePath, locationText: _locationText);
+    if (shouldTrigger && mounted) _triggerEmergencyAuto();
   }
 
   void _triggerEmergencyAuto() {

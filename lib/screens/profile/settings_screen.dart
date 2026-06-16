@@ -4,6 +4,7 @@ import '../auth/password/update_password_screen.dart';
 import '/screens/device/pair_device_screen.dart';
 import '/screens/profile/language_screen.dart';
 import '/screens/profile/delete_account_screen.dart';
+import '/screens/sos/background_log_screen.dart';
 import 'profile_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -182,6 +183,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             context,
                             MaterialPageRoute(
                               builder: (context) => const LanguageScreen(),
+                            ),
+                          ),
+                        ),
+                        _buildSettingTile(
+                          Icons.bug_report_outlined,
+                          'Background Logs',
+                          hasArrow: true,
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const BackgroundLogScreen(),
                             ),
                           ),
                         ),

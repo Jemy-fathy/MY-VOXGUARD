@@ -73,7 +73,7 @@ class _SafeHomeScreenState extends State<SafeHomeScreen>
     });
   }
 
-  // --- ميثود إيقاف الاستغاثة وإرسال إشارة الأمان ------------ 
+  // --- ميثود إيقاف الاستغاثة وإرسال إشارة الأمان ------------
   Future<void> _stopSOS() async {
     final prefs = await SharedPreferences.getInstance();
     final int? currentSosId = widget.sosId ?? prefs.getInt('current_sos_id');
@@ -84,6 +84,15 @@ class _SafeHomeScreenState extends State<SafeHomeScreen>
       return;
     }
     setState(() => _isStopping = true);
+
+    // Mock/offline session (negative id or flagged) never reached the server,
+    // so just tear everything down locally and return to safety.
+    final bool isMock = currentSosId < 0 || (prefs.getBool('sos_is_mock') ?? false);
+    if (isMock) {
+      await _finishStop(prefs);
+      return;
+    }
+
     final String fullUrl = "$sosApiUrl/$currentSosId/stop";
     try {
       final response = await http.post(
@@ -93,32 +102,40 @@ class _SafeHomeScreenState extends State<SafeHomeScreen>
           'Accept': 'application/json',
           'bypass-tunnel-reminder': 'true',
         },
-      );
+      ).timeout(const Duration(seconds: 8));
 
-      if (response.statusCode == 200) {        
-        final service = FlutterBackgroundService();
-        var isRunning = await service.isRunning();
-        if (isRunning) {
-          service.invoke("stopService");
-        }
-        await Future.delayed(const Duration(seconds: 3));
-
-        await prefs.remove('current_sos_id');
-        
-        if (mounted) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const HomeScreen()),
-          );
-        }
+      if (response.statusCode == 200) {
+        await _finishStop(prefs);
       } else {
         _showSnackBar("Failed to stop SOS. Please try again.");
         if (mounted) setState(() => _isStopping = false);
       }
     } catch (e) {
+      // Backend unreachable (e.g. local host down): don't strand the user on the
+      // SOS screen — stop the guard locally and head home.
       print("❌ Connection error: $e");
-      _showSnackBar("Connection error.");
-      if (mounted) setState(() => _isStopping = false);
+      _showSnackBar("Offline: ended SOS locally.");
+      await _finishStop(prefs);
+    }
+  }
+
+  /// Stops the background guard, clears the persisted session and routes home.
+  /// Shared by the server-confirmed, mock and offline-fallback stop paths.
+  Future<void> _finishStop(SharedPreferences prefs) async {
+    final service = FlutterBackgroundService();
+    if (await service.isRunning()) {
+      service.invoke("stopService");
+    }
+    await Future.delayed(const Duration(seconds: 1));
+
+    await prefs.remove('current_sos_id');
+    await prefs.remove('sos_is_mock');
+
+    if (mounted) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
+      );
     }
   }
 
