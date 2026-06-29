@@ -1,126 +1,77 @@
 import 'dart:convert';
 import 'dart:io';
-
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-
+import 'package:record/record.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:flutter_background_service/flutter_background_service.dart';
+import 'package:vox_guard/screens/sos/background_service.dart'; 
 import '../../config/api_config.dart';
 
-/// Stage-1 listen window: a short clip is continuously transcribed and checked
-/// against the danger dictionary. Cheap, runs constantly.
 const Duration kListenWindow = Duration(seconds: 12);
-
-/// Stage-2 evidence clip: recorded only AFTER a danger keyword is detected,
-/// then passed to the emotion model (and stored as evidence). Heavy, rare.
 const Duration kAiChunkDuration = Duration(minutes: 2);
-
-/// SharedPreferences flag set by the background service while an SOS is active.
-/// The foreground monitor checks it and steps aside so the two isolates never
-/// fight over the microphone.
 const String kSosActiveKey = 'sos_active';
-
-/// SharedPreferences flag for the master "AI Auto Mode" toggle in Settings.
-/// When false, the whole auto-detection pipeline is disabled (manual SOS still
-/// works).
 const String kAiAutoModeKey = 'ai_auto_mode_enabled';
-
-/// SharedPreferences flag for the "Emotion Detection" toggle in Settings.
-/// When false, the emotion model is skipped and a danger-word hit triggers the
-/// SOS directly.
 const String kEmotionDetectionKey = 'emotion_detection_enabled';
-
-/// SharedPreferences key for cached custom zones (shared with the map screen).
-/// Each entry is a JSON object: `{id, name, isDanger, lat, lng, radius}`.
 const String _kCustomZonesKey = 'user_custom_zones_local';
 
-/// Stage 1 — cheap & constant. Transcribes [filePath] (speech-to-text) and
-/// checks the text against the backend danger dictionary. Returns true when a
-/// danger keyword/phrase is found.
-Future<bool> screenForDanger(
-  String filePath, {
-  required String locationText,
-}) async {
+
+Future<bool> screenForDanger(String filePath,
+    {required String locationText}) async {
   try {
     final prefs = await SharedPreferences.getInstance();
     final String? token = prefs.getString('auth_token');
 
-    // Speech-to-text.
     final sttReq = http.MultipartRequest('POST', Uri.parse(ApiConfig.sttUrl));
     sttReq.files.add(await http.MultipartFile.fromPath('audio', filePath));
     final sttResp = await http.Response.fromStream(await sttReq.send());
-    final String text = jsonDecode(sttResp.body)['text']?.toString() ?? 'nothing';
-    if (text == 'nothing' || text == 'null' || text.trim().isEmpty) {
-      return false;
-    }
 
-    // Danger-word dictionary check (backend).
+    debugPrint(
+        '[AI-MONITOR] STT Response: ${sttResp.statusCode} | ${sttResp.body}');
+
+    final String text = jsonDecode(sttResp.body)['text']?.toString() ?? '';
+    if (text.isEmpty || text == 'null') return false;
+
     final dangerResp = await http.post(
       Uri.parse(ApiConfig.dictionaryCheckUrl),
-      headers: {'Authorization': 'Bearer $token', 'Accept': 'application/json'},
-      body: {'text': text, 'location_text': locationText},
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: {
+        'text': text,
+        'location_text': locationText,
+        'latitude': '0',
+        'longitude': '0'
+      },
     );
-    return dangerResp.statusCode == 200 &&
-        jsonDecode(dangerResp.body)['danger_detected'] == true;
+
+    debugPrint(
+        '[AI-MONITOR] Dictionary Check Response: ${dangerResp.statusCode} | ${dangerResp.body}');
+
+    final data = jsonDecode(dangerResp.body);
+    return dangerResp.statusCode == 200 && data['danger_detected'] == true;
   } catch (e) {
-    debugPrint('[AI-MONITOR] stage-1 screen error: $e');
+    debugPrint('[AI-MONITOR] Dictionary Check Error: $e');
     return false;
   }
 }
 
-/// Stage 2 — heavy & rare. Runs the emotion / voice-stress model on [filePath]
-/// (a ~2-minute clip). This model is the final decision-maker: returns true
-/// when it confirms distress and the SOS should fire.
-Future<bool> confirmEmotion(String filePath) async {
-  try {
-    final prefs = await SharedPreferences.getInstance();
-    final String userId = prefs.getString('user_id') ?? '0';
 
-    final emoReq = http.MultipartRequest('POST', Uri.parse(ApiConfig.emotionUrl));
-    emoReq.files.add(await http.MultipartFile.fromPath('file', filePath));
-    emoReq.fields['user_id'] = userId;
-    final emoResp = await http.Response.fromStream(await emoReq.send());
-    return jsonDecode(emoResp.body)['trigger_sos'] == true;
-  } catch (e) {
-    debugPrint('[AI-MONITOR] stage-2 emotion error: $e');
-    return false;
-  }
-}
-
-/// Runs the full two-stage pipeline on a single clip: stage 1 (STT + danger
-/// dictionary) and, on a keyword hit, stage 2 (emotion model). Honors the
-/// Emotion Detection toggle — when it is off a danger-word hit triggers
-/// directly. Used by the background evidence loop during an active SOS.
-Future<bool> analyzeAudioChunk(
-  String filePath, {
-  required String locationText,
-}) async {
-  if (!await screenForDanger(filePath, locationText: locationText)) {
-    return false;
-  }
-  final prefs = await SharedPreferences.getInstance();
-  final bool emotionEnabled = prefs.getBool(kEmotionDetectionKey) ?? true;
-  if (!emotionEnabled) {
-    debugPrint('[AI-MONITOR] emotion off; danger words trigger SOS directly.');
-    return true;
-  }
-  return confirmEmotion(filePath);
-}
-
-/// Returns true when [lat]/[lng] falls inside any user-defined SAFE zone (a
-/// custom zone with `isDanger != true`). The AI auto pipeline pauses inside
-/// safe zones; manual SOS is unaffected.
 Future<bool> isInsideSafeZone(double lat, double lng) async {
   try {
     final prefs = await SharedPreferences.getInstance();
     final List<String> raw = prefs.getStringList(_kCustomZonesKey) ?? const [];
     for (final entry in raw) {
       final Map<String, dynamic> z = jsonDecode(entry) as Map<String, dynamic>;
-      if (z['isDanger'] == true) continue; // danger zones don't pause the AI
+      if (z['isDanger'] == true) continue;
+      
       final double zlat = (z['lat'] as num).toDouble();
       final double zlng = (z['lng'] as num).toDouble();
       final double radius = (z['radius'] as num).toDouble();
+
       if (Geolocator.distanceBetween(lat, lng, zlat, zlng) <= radius) {
         return true;
       }
@@ -131,36 +82,150 @@ Future<bool> isInsideSafeZone(double lat, double lng) async {
   return false;
 }
 
-/// Best-effort upload of a monitoring recording to the backend so the audio is
-/// stored as evidence. During an active SOS ([sosId] > 0) it attaches to that
-/// session's `uploadAudio` endpoint; otherwise it posts to the general monitor
-/// endpoint. Failures are swallowed so monitoring never breaks.
-Future<void> uploadRecordingToBackend(
-  String filePath, {
-  int? sosId,
-  String? token,
-}) async {
+Future<void> checkDangerZoneStatus(Position pos) async {
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.reload(); 
+  
+  bool isSosActive = prefs.getBool('sos_active') ?? false;
+  if (isSosActive) {
+    debugPrint('[AI-MONITOR] SOS is already active. Skipping Danger Zone check.');
+    return;
+  }
+  
+  List<String> zones = prefs.getStringList('user_custom_zones_local') ?? [];
+
+  for (var zoneStr in zones) {
+    Map<String, dynamic> zone = jsonDecode(zoneStr);
+    
+    double distance = Geolocator.distanceBetween(
+        pos.latitude, pos.longitude, zone['lat'], zone['lng']);
+
+    if (distance <= zone['radius']) {
+      if (zone['isDanger'] == true && zone['notify_contacts'] == true) {
+                await triggerSos(
+          isManual: false, 
+          reason: "Danger Zone: ${zone['name']}"
+        );
+        return; 
+      }
+    }
+  }
+}
+Future<void> uploadRecordingToBackend(String filePath, {int? sosId}) async {
   try {
     if (!await File(filePath).exists()) return;
 
     final prefs = await SharedPreferences.getInstance();
-    token ??= prefs.getString('auth_token');
 
-    final bool hasSos = sosId != null && sosId > 0;
-    final Uri uri = hasSos
+    final token = prefs.getString('auth_token');
+
+
+    final uri = (sosId != null && sosId > 0)
         ? Uri.parse('${ApiConfig.sosBaseUrl}/$sosId/uploadAudio')
         : Uri.parse(ApiConfig.monitorAudioUrl);
 
     final req = http.MultipartRequest('POST', uri);
-    if (token != null && token.isNotEmpty) {
-      req.headers['Authorization'] = 'Bearer $token';
+    if (token != null) req.headers['Authorization'] = 'Bearer $token';
+
+    req.files.add(await http.MultipartFile.fromPath(
+        (sosId != null && sosId > 0) ? 'audio_file' : 'audio', filePath));
+    final response = await req.send().timeout(const Duration(seconds: 45));
+
+    if (response.statusCode == 200) {
+      debugPrint('[AI-MONITOR] Evidence uploaded successfully');
     }
-    req.files.add(
-      await http.MultipartFile.fromPath(hasSos ? 'audio_file' : 'audio', filePath),
-    );
-    final resp = await req.send().timeout(const Duration(seconds: 30));
-    debugPrint('[AI-MONITOR] recording uploaded (${resp.statusCode}) → $uri');
   } catch (e) {
-    debugPrint('[AI-MONITOR] recording upload failed: $e');
+    debugPrint('[AI-MONITOR] Upload error: $e');
+  }
+}
+Future<String?> confirmEmotion(String filePath) async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    final String userId = prefs.getString('user_id') ?? '0';
+
+    final emoReq =
+        http.MultipartRequest('POST', Uri.parse(ApiConfig.emotionUrl));
+    emoReq.files.add(await http.MultipartFile.fromPath('file', filePath));
+    emoReq.fields['user_id'] = userId;
+
+    final emoResp = await http.Response.fromStream(await emoReq.send());
+
+    debugPrint(
+        '[AI-MONITOR] Emotion Model Response: ${emoResp.statusCode} | ${emoResp.body}');
+
+    final data = jsonDecode(emoResp.body);
+    
+    if (data['trigger_sos'] == true) {
+      return data['emotion']?.toString() ?? 'detected';
+    }
+    return null;
+  } catch (e) {
+    debugPrint('[AI-MONITOR] Emotion Model Error: $e');
+    return null;
+  }
+}
+
+Future<void> runAiMonitorLoop(ServiceInstance service) async {
+  final recorder = AudioRecorder();
+  final tempDir = await getTemporaryDirectory();
+
+  while (true) {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.reload();
+
+      Position pos = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.low);
+      
+      bool isSafe = await isInsideSafeZone(pos.latitude, pos.longitude);
+      if (isSafe) {
+        debugPrint('[AI-MONITOR] User is in a Safe Zone. AI Monitor FORCED OFF.');
+        await Future.delayed(const Duration(seconds: 30)); 
+        continue;
+      }
+
+   
+      await checkDangerZoneStatus(pos);
+
+      bool isEmotionEnabled = prefs.getBool(kEmotionDetectionKey) ?? true;
+      if (!isEmotionEnabled) {
+        await Future.delayed(const Duration(seconds: 10));
+        continue;
+      }
+      final String tempPath = '${tempDir.path}/quick_check.wav';
+      
+      await recorder.start(const RecordConfig(encoder: AudioEncoder.wav, sampleRate: 16000), path: tempPath);
+      await Future.delayed(const Duration(seconds: 10));
+      await recorder.stop();
+
+      bool isDanger = await screenForDanger(tempPath, locationText: "${pos.latitude},${pos.longitude}");
+
+      if (isDanger) {
+        final String fullRecordPath = '${tempDir.path}/evidence_full.wav';
+        await recorder.start(const RecordConfig(encoder: AudioEncoder.wav, sampleRate: 16000), path: fullRecordPath);
+        await Future.delayed(const Duration(minutes: 1)); 
+        await recorder.stop();
+
+        String? emotionResult = await confirmEmotion(fullRecordPath);
+
+        if (emotionResult != null) {
+          final appDir = await getApplicationDocumentsDirectory();
+          final String savedPath = '${appDir.path}/SOS_${DateTime.now().millisecondsSinceEpoch}.wav';
+          await File(fullRecordPath).copy(savedPath);
+
+         await triggerSos(
+          isManual: false,
+          reason: "AI Detected Danger: $emotionResult", 
+         emotion: emotionResult, 
+         evidencePath: savedPath,
+          );
+        }
+      }
+      
+      if (await File(tempPath).exists()) await File(tempPath).delete();
+
+    } catch (e) {
+      debugPrint('>>> [BACKGROUND SERVICE] Error in Loop: $e');
+      await Future.delayed(const Duration(seconds: 3)); 
+    }
   }
 }

@@ -5,7 +5,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
-import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../config/api_config.dart';
@@ -123,37 +122,21 @@ class SosService {
 
   /// Starts the foreground background service and hands it the session so it
   /// can stream live location and record audio while the screen is off.
-  Future<void> startBackgroundGuard({
-    required SosSession session,
-    required bool shareLocation,
-    required bool recordAudio,
-  }) async {
-    try {
-      // Audio recording needs RECORD_AUDIO granted in the FOREGROUND: the
-      // background isolate can't show a permission prompt, so resolve it here
-      // and downgrade to no-audio if the mic isn't available.
-      bool canRecordAudio = recordAudio;
-      if (recordAudio) {
-        canRecordAudio = (await Permission.microphone.request()).isGranted;
-      }
+// في ملف SosService.dart - داخل دالة startBackgroundGuard
+Future<void> startBackgroundGuard({
+  required SosSession session,
+  required bool shareLocation,
+  required bool recordAudio,
+}) async {
+  final service = FlutterBackgroundService();
+  
+  await Future.delayed(const Duration(milliseconds: 1500));
 
-      final service = FlutterBackgroundService();
-      await service.startService();
-
-      // Give the isolate a moment to spin up before delivering the payload.
-      await Future<void>.delayed(const Duration(milliseconds: 800));
-
-      service.invoke('startSOS', {
-        'sos_id': session.sosId,
-        'token': session.token,
-        'share_location': shareLocation,
-        'record_audio': canRecordAudio,
-      });
-    } catch (e) {
-      debugPrint('SosService: background guard error $e');
-    }
-  }
-
+  service.invoke('startManualSos', {
+    'reason': 'manual', 
+    'evidence_path': null, // أو المسار إذا كان هناك تسجيل
+  });
+}
   /// Best-effort close of a session the user cancelled during the countdown.
   /// Failures are swallowed since the alert never really started.
   Future<void> cancelSession(SosSession session) async {

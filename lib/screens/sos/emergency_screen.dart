@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import '../../config/colors.dart';
 import '../../custom_widgets/custom_button.dart';
 import 'home_screen.dart';
-import 'safe_home_screen.dart';
+import 'safe_screen.dart';
 import 'sos_service.dart';
 
 /// The manual-SOS grace screen.

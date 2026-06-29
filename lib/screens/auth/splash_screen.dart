@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:permission_handler/permission_handler.dart'; // 🚨 استدعاء الباكيدج لطلب الصلاحيات برمجياً
 import '../../config/colors.dart';
 import '../../custom_widgets/custom_button.dart';
 
@@ -11,33 +10,6 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
-
-  @override
-  void initState() {
-    super.initState();
-    // 🚨 طلب الصلاحيات بمجرد فتح الشاشة الأولى فوراً
-    _requestAppPermissions();
-  }
-
-  Future<void> _requestAppPermissions() async {
-  // 1. أولاً نطلب الأذونات الأساسية (الموقع أثناء الاستخدام، المايك، الإشعارات)
-  Map<Permission, PermissionStatus> statuses = await [
-    Permission.location,
-    Permission.microphone,
-    Permission.notification,
-  ].request();
-
-  // 2. بعد أن يوافق المستخدم على "أثناء الاستخدام"، نطلب "السماح دائماً" (Always Allow)
-  if (await Permission.location.isGranted) {
-    // نتحقق إذا كان يحتاج إذن الخلفية
-    if (await Permission.locationAlways.request().isGranted) {
-      debugPrint("تم الحصول على صلاحية الموقع دائماً بنجاح");
-    } else {
-      // إذا رفض، نفتح الإعدادات ليقوم المستخدم بتفعيلها يدوياً (مهم جداً!)
-      openAppSettings();
-    }
-  }
-}
 
   @override
   Widget build(BuildContext context) {

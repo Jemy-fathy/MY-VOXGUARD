@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import '../../config/colors.dart';
 import '../../custom_widgets/custom_button.dart';
 import '../../custom_widgets/custom_text_field.dart';
@@ -28,7 +27,7 @@ class _LoginScreenState extends State<LoginScreen> {
   static const String baseUrl = "http://192.168.1.191:8000/api";
 
   final GoogleSignIn _googleSignIn = GoogleSignIn(
-    clientId: '937671622047-1h87v3mvu4k9i32gc2ouegneu4mpiqf3.apps.googleusercontent.com',
+    scopes: ['email', 'profile'],
   );
 
   @override
@@ -54,18 +53,6 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> loginUser() async {
-    if (emailController.text.trim().isEmpty || passwordController.text.isEmpty) {
-      //  TODO: Remove this after testing
-      // _showMessage("Please fill all fields");
-      // return;
-
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('user_id', "110010100");
-      await prefs.setString('user_name', "Abdelmonem Rabea");
-      await prefs.setString('user_image', "https://dreampfp.com/wp-content/uploads/2026/05/funny-profile-picture-ideas-1.webp");
-      Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
-    }
-
     setState(() => isLoading = true);
 
     try {
@@ -85,77 +72,71 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (response.statusCode == 200) {
         final prefs = await SharedPreferences.getInstance();
-
-        if (data['token'] != null) {
-          // تغيير المفتاح هنا أيضاً إلى auth_token
-          await prefs.setString('auth_token', data['token']);
-        }
+        if (data['token'] != null) await prefs.setString('auth_token', data['token']);
         
-
-        // --- التعديل هنا: حفظ بيانات المستخدم بالكامل ---
         if (data['user'] != null) {
           var user = data['user'];
-          
-          // حل مشكلة الـ ID إذا كان Null ومنع توقف الكود
-          String userId = (user['id'] ?? 0).toString();
-          String firstName = user['first_name'] ?? "";
-          String lastName = user['last_name'] ?? "";
-          String fullName = "$firstName $lastName".trim();
-          String profilePic = user['profile_photo_url'] ?? "";
-
-          await prefs.setString('user_id', userId);
-          await prefs.setString('user_name', fullName.isNotEmpty ? fullName : "User");
-          await prefs.setString('user_image', profilePic);
-          
-          dev.log("Success: Saved User -> $fullName");
+          await prefs.setString('user_id', (user['id'] ?? 0).toString());
+          await prefs.setString('user_name', "${user['first_name'] ?? ''} ${user['last_name'] ?? ''}".trim());
+          await prefs.setString('user_image', user['profile_photo_url'] ?? "");
         }
 
         if (!mounted) return;
-        _showMessage("Welcome back!");
-        
         Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
       } else {
         _showMessage(data["message"] ?? "Invalid credentials");
       }
     } catch (e) {
       dev.log("Login Error: $e");
-      _showMessage("Server connection failed. Please check your IP.");
+      _showMessage("Server connection failed.");
     } finally {
       if (mounted) setState(() => isLoading = false);
     }
   }
 
-  Future<void> signInWithGoogle() async {
-    setState(() => isLoading = true);
-    try {
-      final googleUser = await _googleSignIn.signIn();
-      if (googleUser != null) {
-        if (!mounted) return;
-        Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
-      }
-    } catch (error) {
-      _showMessage("Google Error: $error");
-    } finally {
-      if (mounted) setState(() => isLoading = false);
+Future<void> signInWithGoogle() async {
+  setState(() => isLoading = true);
+  try {
+    final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+    if (googleUser == null) {
+      setState(() => isLoading = false);
+      return;
     }
-  }
 
-  Future<void> signInWithFacebook() async {
-    setState(() => isLoading = true);
-    try {
-      final result = await FacebookAuth.instance.login();
-      if (result.status == LoginStatus.success) {
-        if (!mounted) return;
-        Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
-      } else {
-        _showMessage("Facebook Login ${result.status.toString().split('.').last}");
+    final response = await http.post(
+      Uri.parse("$baseUrl/social-login"), 
+      headers: {"Content-Type": "application/json", "Accept": "application/json"},
+      body: jsonEncode({
+        "social_id": googleUser.id,
+        "social_type": "google",
+        "email": googleUser.email,
+        "first_name": googleUser.displayName?.split(' ').first ?? "",
+        "last_name": googleUser.displayName?.split(' ').last ?? "",
+      }),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      final prefs = await SharedPreferences.getInstance();
+      
+      await prefs.setString('auth_token', data['token']);
+      
+      if (data['user'] != null) {
+        var user = data['user'];
+        await prefs.setString('user_name', "${user['first_name'] ?? ''} ${user['last_name'] ?? ''}".trim());
       }
-    } catch (e) {
-      _showMessage("Facebook Sign-In failed");
-    } finally {
-      if (mounted) setState(() => isLoading = false);
+      
+      if (!mounted) return;
+      Navigator.pushNamedAndRemoveUntil(context, '/permissions', (route) => false);
+    } else {
     }
+  } catch (error) {
+    dev.log("Google Sign In Error: $error");
+  } finally {
+    if (mounted) setState(() => isLoading = false);
   }
+}
 
   @override
   void dispose() {
@@ -163,6 +144,8 @@ class _LoginScreenState extends State<LoginScreen> {
     passwordController.dispose();
     super.dispose();
   }
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -212,7 +195,6 @@ class _LoginScreenState extends State<LoginScreen> {
                         const SizedBox(height: 25),
                         _socialButton("Sign in with Google", 'images/google_icon.png', isLoading ? null : signInWithGoogle),
                         const SizedBox(height: 12),
-                        _socialButton("Sign in with Facebook", 'images/facebook_icon.png', isLoading ? null : signInWithFacebook),
                         const SizedBox(height: 20),
                         _buildDivider(),
                         const SizedBox(height: 20),

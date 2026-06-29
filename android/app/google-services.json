@@ -12,7 +12,20 @@
           "package_name": "com.example.vox_guard"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "937671622047-72rmp83ua03s1leve0ndp5dd32joe4tg.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.vox_guard",
+            "certificate_hash": "335241c4d9159e879875f976d57cf55598e24d2a"
+          }
+        },
+        {
+          "client_id": "937671622047-1h87v3mvu4k9l33gc3ouegneu4mpiqf3.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyCitABlzRsrKy0OJH3UH24DP2L-P62T0Fs"
@@ -20,7 +33,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "937671622047-1h87v3mvu4k9l33gc3ouegneu4mpiqf3.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

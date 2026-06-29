@@ -17,11 +17,22 @@ class PermissionsScreen extends StatelessWidget {
   }
 
   Map<Permission, PermissionStatus> statuses = await [
+    Permission.notification, 
     Permission.microphone,
     Permission.bluetoothScan,
     Permission.bluetoothConnect,
     Permission.activityRecognition,
+    Permission.locationAlways,
   ].request();
+
+if (await Permission.location.isGranted) {
+    if (await Permission.locationAlways.request().isGranted) {
+      debugPrint("تم الحصول على صلاحية الموقع دائماً بنجاح");
+    } else {
+      openAppSettings();
+    }
+  }
+
 
   bool isLocationGranted =
       await Permission.locationAlways.isGranted;
@@ -159,12 +170,10 @@ class PermissionsScreen extends StatelessWidget {
       children: List.generate(4, (index) {
         return Container(
           margin: const EdgeInsets.symmetric(horizontal: 4),
-          width: 10,
+          width:  9.7,
           height: 10,
           decoration: BoxDecoration(
-            color: index == activeStep 
-                ? const Color(0xFFCB30E0) 
-                : const Color(0xFFCB30E0).withOpacity(0.2),
+          color: index == activeStep ? const Color(0xFFCB30E0) : Colors.grey.shade300,
             borderRadius: BorderRadius.circular(5),
           ),
         );

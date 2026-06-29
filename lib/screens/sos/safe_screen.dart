@@ -1,14 +1,11 @@
-import 'dart:async';
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'dart:ui' as ui;
-import 'home_screen.dart';
 import '../map/map_screen.dart';
+import 'home_screen.dart';
 import '../profile/profile_screen.dart';
 import '../profile/settings_screen.dart';
 import '../reports/create_report_screen.dart';
@@ -18,13 +15,13 @@ import '../fake_call/fake_call_screen.dart';
 import '../voice_password/voice_password_intro_screen.dart';
 
 class SafeHomeScreen extends StatefulWidget {
-  final int? sosId; 
+  final int? sosId;
   final String? token;
   final bool isLocationSharing;
   final bool isAudioRecording;
 
   const SafeHomeScreen({
-    super.key, 
+    super.key,
     this.sosId,
     this.token,
     this.isLocationSharing = true,
@@ -32,21 +29,17 @@ class SafeHomeScreen extends StatefulWidget {
   });
 
   @override
-  State<SafeHomeScreen> createState() => _SafeHomeScreenState();
+  State<SafeHomeScreen> createState() => _SafeScreenState();
 }
 
-class _SafeHomeScreenState extends State<SafeHomeScreen>
-    with TickerProviderStateMixin {
+class _SafeScreenState extends State<SafeHomeScreen> with TickerProviderStateMixin {
   int _selectedIndex = 0;
   late AnimationController _waveController;
 
   GoogleMapController? _googleMapController;
   LatLng _currentLatLng = const LatLng(30.0444, 31.2357);
-  String _locationText = "Locating...";
+  String _locationText = "Loading location...";
   bool _isStopping = false;
-
-  // 🌟 تايمر محلي خفيف لتحديث موقع الخريطة فقط أمام المستخدم بدون إرسال للسيرفر
-  Timer? _uiLocationTimer;
 
   final String sosApiUrl = "http://192.168.1.191:8000/api/sos";
 
@@ -56,7 +49,23 @@ class _SafeHomeScreenState extends State<SafeHomeScreen>
     const CreateReportScreen(),
     const SettingsScreen(),
   ];
+  String _userName = "Loading...";
+  String _userImage = "";
 
+int? _sosId;
+
+@override
+void didChangeDependencies() {
+  super.didChangeDependencies();
+  if (widget.sosId != null) {
+    _sosId = widget.sosId;
+  } else {
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args is int) {
+      _sosId = args;
+    }
+  }
+}
   @override
   void initState() {
     super.initState();
@@ -65,69 +74,72 @@ class _SafeHomeScreenState extends State<SafeHomeScreen>
       duration: const Duration(seconds: 2),
     )..repeat();
 
-    _determinePosition();
-
-    // 🌟 تحديث دوري للخريطة المعروضة فقط لتلاحق المستخدم أثناء السير
-    _uiLocationTimer = Timer.periodic(const Duration(seconds: 12), (timer) {
-      _determinePosition();
-    });
+    _loadUserPreferences();
+    _loadLastSavedLocation(); 
   }
 
-  // --- ميثود إيقاف الاستغاثة وإرسال إشارة الأمان ------------
+  Future<void> _loadUserPreferences() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        _userName = prefs.getString('user_name') ?? "User";
+        _userImage = prefs.getString('user_image') ?? "";
+      });
+    }
+  }
+
+  Future<void> _loadLastSavedLocation() async {
+    final prefs = await SharedPreferences.getInstance();
+    double lat = prefs.getDouble('last_lat') ?? 30.0444;
+    double lng = prefs.getDouble('last_lng') ?? 31.2357;
+    
+    if (mounted) {
+      setState(() {
+        _currentLatLng = LatLng(lat, lng);
+      });
+      _googleMapController?.animateCamera(
+        CameraUpdate.newLatLngZoom(_currentLatLng, 15),
+      );
+    }
+  }
+
   Future<void> _stopSOS() async {
     final prefs = await SharedPreferences.getInstance();
-    final int? currentSosId = widget.sosId ?? prefs.getInt('current_sos_id');
-    final String? currentToken = widget.token ?? prefs.getString('token') ?? prefs.getString('auth_token');
+    final int? currentSosId = widget.sosId ?? prefs.getInt('active_sos_id');
+    final String? currentToken = widget.token ?? prefs.getString('auth_token');
 
     if (currentSosId == null) {
       _showSnackBar("Error: SOS ID not found.");
       return;
     }
+    
     setState(() => _isStopping = true);
 
-    // Mock/offline session (negative id or flagged) never reached the server,
-    // so just tear everything down locally and return to safety.
-    final bool isMock = currentSosId < 0 || (prefs.getBool('sos_is_mock') ?? false);
-    if (isMock) {
-      await _finishStop(prefs);
-      return;
-    }
-
-    final String fullUrl = "$sosApiUrl/$currentSosId/stop";
     try {
       final response = await http.post(
-        Uri.parse(fullUrl),
-        headers: {
-          'Authorization': 'Bearer $currentToken',
-          'Accept': 'application/json',
-          'bypass-tunnel-reminder': 'true',
-        },
+        Uri.parse("$sosApiUrl/$currentSosId/stop"),
+        headers: {'Authorization': 'Bearer $currentToken', 'Accept': 'application/json'},
       ).timeout(const Duration(seconds: 8));
 
       if (response.statusCode == 200) {
         await _finishStop(prefs);
       } else {
-        _showSnackBar("Failed to stop SOS. Please try again.");
-        if (mounted) setState(() => _isStopping = false);
+        throw Exception("Server rejected stop");
       }
     } catch (e) {
-      // Backend unreachable (e.g. local host down): don't strand the user on the
-      // SOS screen — stop the guard locally and head home.
-      print("❌ Connection error: $e");
-      _showSnackBar("Offline: ended SOS locally.");
+      if (mounted) setState(() => _isStopping = false); 
+      _showSnackBar("Offline: ending SOS locally.");
       await _finishStop(prefs);
     }
   }
 
-  /// Stops the background guard, clears the persisted session and routes home.
-  /// Shared by the server-confirmed, mock and offline-fallback stop paths.
   Future<void> _finishStop(SharedPreferences prefs) async {
     final service = FlutterBackgroundService();
     if (await service.isRunning()) {
       service.invoke("stopService");
     }
-    await Future.delayed(const Duration(seconds: 1));
 
+    await prefs.setBool('sos_active', false);
     await prefs.remove('current_sos_id');
     await prefs.remove('sos_is_mock');
 
@@ -143,65 +155,9 @@ class _SafeHomeScreenState extends State<SafeHomeScreen>
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
-  Future<Map<String, String>> _loadUserData() async {
-    final prefs = await SharedPreferences.getInstance();
-    return {
-      'name': prefs.getString('user_name') ?? "User",
-      'image': prefs.getString('user_image') ?? "",
-    };
-  }
-
-  Future<void> _determinePosition() async {
-    try {
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-      }
-      Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
-      if (mounted) {
-        setState(() {
-          _currentLatLng = LatLng(position.latitude, position.longitude);
-        });
-        _googleMapController?.animateCamera(
-          CameraUpdate.newLatLngZoom(_currentLatLng, 15),
-        );
-        _getAddressFromLatLng(position.latitude, position.longitude);
-      }
-    } catch (e) {
-      debugPrint("Error fetching UI location: $e");
-    }
-  }
-
-  Future<void> _getAddressFromLatLng(double lat, double lon) async {
-    final url = Uri.parse(
-      'https://nominatim.openstreetmap.org/reverse?format=json&lat=$lat&lon=$lon&zoom=18&addressdetails=1',
-    );
-    try {
-      final response = await http.get(
-        url,
-        headers: {'User-Agent': 'voxGuard', 'Accept-Language': 'en'},
-      );
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        String displayName = data['display_name'] ?? "Unknown Location";
-        List<String> parts = displayName.split(',');
-        if (mounted) {
-          setState(() {
-            _locationText = parts.length > 2
-                ? "${parts[0]}, ${parts[1]}"
-                : displayName;
-          });
-        }
-      }
-    } catch (e) {
-      if (mounted) setState(() => _locationText = "Location details unavailable");
-    }
-  }
-
   @override
   void dispose() {
     _waveController.dispose();
-    _uiLocationTimer?.cancel(); // 🌟 تنظيف التايمر المحلي لمنع أي Memory Leak
     super.dispose();
   }
 
@@ -325,51 +281,41 @@ class _SafeHomeScreenState extends State<SafeHomeScreen>
   Widget _header() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: FutureBuilder<Map<String, String>>(
-        future: _loadUserData(),
-        builder: (context, snapshot) {
-          String userName = snapshot.data?['name'] ?? "User";
-          String imageUrl = snapshot.data?['image'] ?? "";
-          return Row(
-            children: [
-              CircleAvatar(
-                radius: 24,
-                backgroundColor: Colors.white24,
-                backgroundImage: imageUrl.isNotEmpty
-                    ? NetworkImage(imageUrl)
-                    : const AssetImage('images/person.png') as ImageProvider,
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 24,
+            backgroundColor: Colors.white24,
+            backgroundImage: _userImage.isNotEmpty
+                ? NetworkImage(_userImage)
+                : const AssetImage('images/person.png') as ImageProvider,
+          ),
+          const SizedBox(width: 12),
+          Text(
+            'Hi, $_userName',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const Spacer(),
+          GestureDetector(
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ProfileScreen()),
+            ),
+            child: Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 1.5),
               ),
-              const SizedBox(width: 12),
-              Text(
-                'Hi, $userName',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const Spacer(),
-              GestureDetector(
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const ProfileScreen()),
-                ),
-                child: Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 1.5),
-                  ),
-                  child: const Icon(
-                    Icons.person_outline,
-                    color: Colors.white,
-                    size: 22,
-                  ),
-                ),
-              ),
-            ],
-          );
-        },
+              child: const Icon(Icons.person_outline,
+                  color: Colors.white, size: 22),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -440,7 +386,7 @@ class _SafeHomeScreenState extends State<SafeHomeScreen>
     );
   }
 
-  Widget _safetyStatusCard() {
+ Widget _safetyStatusCard() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Container(
@@ -460,14 +406,15 @@ class _SafeHomeScreenState extends State<SafeHomeScreen>
         child: const Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text("Today's Safety Status", style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+            Text("Today's Safety Status",
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
             SizedBox(height: 12),
             Row(
               children: [
                 Icon(Icons.circle, color: Colors.red, size: 12),
                 SizedBox(width: 10),
                 Text(
-                  "SOS Mode Active",
+                  "You Are Un Safe",
                   style: TextStyle(
                     color: Colors.red,
                     fontWeight: FontWeight.bold,
@@ -479,7 +426,7 @@ class _SafeHomeScreenState extends State<SafeHomeScreen>
             Padding(
               padding: EdgeInsets.only(left: 30),
               child: Text(
-                "Contacts have been notified. Stay calm.",
+                "All System Normal. Stay Aware",
                 style: TextStyle(color: Colors.grey, fontSize: 12),
               ),
             ),
@@ -561,7 +508,7 @@ class _SafeHomeScreenState extends State<SafeHomeScreen>
                           style: const TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
-          ),
+                          ),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
@@ -607,7 +554,7 @@ class _SafeHomeScreenState extends State<SafeHomeScreen>
     return InkWell(
       onTap: () => setState(() => _selectedIndex = index),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds:0),
+        duration: const Duration(milliseconds: 0),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected ? const Color(0xFFCB30E0) : Colors.transparent,

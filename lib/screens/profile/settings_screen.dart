@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../auth/password/update_password_screen.dart';
 import '/screens/device/pair_device_screen.dart';
 import '/screens/profile/language_screen.dart';
 import '/screens/profile/delete_account_screen.dart';
-import '/screens/sos/background_log_screen.dart';
 import '/screens/sos/ai_monitor.dart' show kEmotionDetectionKey;
 import 'profile_screen.dart';
 
@@ -31,17 +31,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _loadEmotionDetection();
   }
 
-  Future<void> _loadEmotionDetection() async {
-    final prefs = await SharedPreferences.getInstance();
-    final value = prefs.getBool(kEmotionDetectionKey) ?? true;
-    if (mounted) setState(() => emotionDetectionStatus = value);
-  }
+Future<void> _loadEmotionDetection() async {
+  final prefs = await SharedPreferences.getInstance();
+  final value = prefs.getBool(kEmotionDetectionKey) ?? true; 
+  if (mounted) setState(() => emotionDetectionStatus = value);
+}
 
-  Future<void> _setEmotionDetection(bool value) async {
-    setState(() => emotionDetectionStatus = value);
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(kEmotionDetectionKey, value);
-  }
+Future<void> _setEmotionDetection(bool value) async {
+  setState(() => emotionDetectionStatus = value);
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setBool(kEmotionDetectionKey, value); 
+    FlutterBackgroundService().invoke('updateEmotionStatus', {'enabled': value});
+  debugPrint("UI: Set $kEmotionDetectionKey to $value");
+}
 
   @override
   Widget build(BuildContext context) {
@@ -206,17 +208,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ),
                           ),
                         ),
-                        _buildSettingTile(
-                          Icons.bug_report_outlined,
-                          'Background Logs',
-                          hasArrow: true,
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const BackgroundLogScreen(),
-                            ),
-                          ),
-                        ),
+                     
                         const SizedBox(height: 30),
                         _buildLogoutButton(),
                         const SizedBox(height: 40),
