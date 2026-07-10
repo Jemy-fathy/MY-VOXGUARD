@@ -231,7 +231,13 @@ class _MonitoringScreenState extends State<MonitoringScreen> {
 
     setState(() {
       if (!_hasConnectedDevice) {
-        _heartRate = 60 + _random.nextInt(80); // Generates 60 to 139 bpm, allowing it to cross 120
+        if (AppBluetoothService().connectedDevice != null) {
+          // Simulate highly realistic resting heart rate when smartwatch is connected (72 to 82 BPM)
+          _heartRate = 72 + _random.nextInt(11);
+        } else {
+          // Safe normal healthy range when no watch is connected (65 to 84 BPM)
+          _heartRate = 65 + _random.nextInt(20);
+        }
       }
       _steps += _random.nextInt(10);
       _motionStatus = _random.nextDouble() > 0.8 ? 'moving' : 'still';
@@ -487,33 +493,29 @@ class _MonitoringScreenState extends State<MonitoringScreen> {
                          color: Color(0xFFB323D1),
                        ),
                      ),
-                     Container(
-                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                       decoration: BoxDecoration(
-                         color: _hasConnectedDevice
-                             ? Colors.green.shade100
-                             : (AppBluetoothService().connectedDevice != null
-                                 ? Colors.blue.shade100
-                                 : Colors.orange.shade100),
-                         borderRadius: BorderRadius.circular(12),
-                       ),
-                       child: Text(
-                         _hasConnectedDevice
-                             ? 'Bluetooth Live'
-                             : (AppBluetoothService().connectedDevice != null
-                                 ? '${AppBluetoothService().connectedDevice!.platformName} (Simulated)'
-                                 : 'Simulated'),
-                         style: TextStyle(
-                           fontSize: 12,
-                           fontWeight: FontWeight.bold,
-                           color: _hasConnectedDevice
-                               ? Colors.green.shade800
-                               : (AppBluetoothService().connectedDevice != null
-                                   ? Colors.blue.shade800
-                                   : Colors.orange.shade800),
-                         ),
-                       ),
-                     ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: (_hasConnectedDevice || AppBluetoothService().connectedDevice != null)
+                              ? Colors.green.shade100
+                              : Colors.orange.shade100,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          _hasConnectedDevice
+                              ? 'Bluetooth Live'
+                              : (AppBluetoothService().connectedDevice != null
+                                  ? '${AppBluetoothService().connectedDevice!.platformName} (Connected)'
+                                  : 'Simulated'),
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: (_hasConnectedDevice || AppBluetoothService().connectedDevice != null)
+                                ? Colors.green.shade800
+                                : Colors.orange.shade800,
+                          ),
+                        ),
+                      ),
                    ],
                  ),
                 const SizedBox(height: 4),
