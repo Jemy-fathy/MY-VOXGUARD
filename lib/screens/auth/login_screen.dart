@@ -273,17 +273,26 @@ class _LoginScreenState extends State<LoginScreen> {
         await prefs.setString('token', data['token']);
         await prefs.setString('auth_token', data['token']);
       }
-        if (data['user'] != null) {
-          var user = data['user'];
-          await prefs.setString('user_id', (user['id'] ?? 0).toString());
-          String displayName = "${user['first_name'] ?? ''} ${user['last_name'] ?? ''}".trim();
-          displayName = displayName.replaceAll('FacebookUser', '').trim();
-          if (displayName.endsWith('.')) {
-            displayName = displayName.substring(0, displayName.length - 1).trim();
-          }
-          await prefs.setString('user_name', displayName);
-          await prefs.setString('user_image', user['profile_photo_url'] ?? "");
+      if (data['user'] != null) {
+        var user = data['user'];
+        await prefs.setString('user_id', (user['id'] ?? 0).toString());
+        if (user['first_name'] != null) {
+          await prefs.setString('first_name', user['first_name'].toString());
         }
+        if (user['last_name'] != null) {
+          await prefs.setString('last_name', user['last_name'].toString());
+        }
+        if (user['email'] != null) {
+          await prefs.setString('email', user['email'].toString());
+        }
+        String displayName = "${user['first_name'] ?? ''} ${user['last_name'] ?? ''}".trim();
+        displayName = displayName.replaceAll('FacebookUser', '').trim();
+        if (displayName.endsWith('.')) {
+          displayName = displayName.substring(0, displayName.length - 1).trim();
+        }
+        await prefs.setString('user_name', displayName);
+        await prefs.setString('user_image', user['profile_photo_url'] ?? "");
+      }
       if (!mounted) return;
       _showMessage("welcome_message".tr());
       Navigator.pushNamedAndRemoveUntil(context, '/permissions', (route) => false);
@@ -293,11 +302,39 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _showDemoFacebookDialog() {
+    final TextEditingController nameController = TextEditingController(text: "Facebook DemoUser");
+    final TextEditingController emailController = TextEditingController(text: "demo_facebook_user@gmail.com");
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text("Facebook Sign-In"),
-        content: const Text("The Facebook SDK is not fully configured on this simulator. Would you like to log in with a test Facebook account?"),
+        title: const Text("Facebook Sign-In (Demo/Test)"),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text("Facebook Sign-In is using development demo mode. Enter any test credentials:"),
+              const SizedBox(height: 16),
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(
+                  labelText: "الاسم (Name)",
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: emailController,
+                decoration: const InputDecoration(
+                  labelText: "البريد الإلكتروني (Email)",
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.emailAddress,
+              ),
+            ],
+          ),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -306,14 +343,23 @@ class _LoginScreenState extends State<LoginScreen> {
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryPurple),
             onPressed: () async {
+              String name = nameController.text.trim();
+              String email = emailController.text.trim();
+              if (name.isEmpty || email.isEmpty) {
+                _showMessage("الرجاء إدخال الاسم والبريد الإلكتروني");
+                return;
+              }
               Navigator.pop(context);
               setState(() => isLoading = true);
               try {
+                String cleanEmail = email.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+                String socialId = "${cleanEmail}_facebook_demo";
+
                 await _sendSocialLogin(
-                  socialId: "123456789_fb_demo",
+                  socialId: socialId,
                   socialType: "facebook",
-                  email: "demo_fb_user@gmail.com",
-                  name: "Facebook DemoUser",
+                  email: email,
+                  name: name,
                 );
               } catch (e) {
                 _showMessage("Connection error");
@@ -329,11 +375,39 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _showDemoGoogleDialog() {
+    final TextEditingController nameController = TextEditingController(text: "Google DemoUser");
+    final TextEditingController emailController = TextEditingController(text: "demo_google_user@gmail.com");
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text("Google Sign-In"),
-        content: const Text("Google Sign-In is not fully configured on this simulator. Would you like to log in with a test Google account?"),
+        title: const Text("Google Sign-In (Demo/Test)"),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text("Google Sign-In is using development demo mode. Enter any test credentials:"),
+              const SizedBox(height: 16),
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(
+                  labelText: "الاسم (Name)",
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: emailController,
+                decoration: const InputDecoration(
+                  labelText: "البريد الإلكتروني (Email)",
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.emailAddress,
+              ),
+            ],
+          ),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -342,14 +416,23 @@ class _LoginScreenState extends State<LoginScreen> {
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryPurple),
             onPressed: () async {
+              String name = nameController.text.trim();
+              String email = emailController.text.trim();
+              if (name.isEmpty || email.isEmpty) {
+                _showMessage("الرجاء إدخال الاسم والبريد الإلكتروني");
+                return;
+              }
               Navigator.pop(context);
               setState(() => isLoading = true);
               try {
+                String cleanEmail = email.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+                String socialId = "${cleanEmail}_google_demo";
+
                 await _sendSocialLogin(
-                  socialId: "987654321_google_demo",
+                  socialId: socialId,
                   socialType: "google",
-                  email: "demo_google_user@gmail.com",
-                  name: "Google DemoUser",
+                  email: email,
+                  name: name,
                 );
               } catch (e) {
                 _showMessage("Connection error");
