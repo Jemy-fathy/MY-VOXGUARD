@@ -31,9 +31,24 @@ class _StartTripScreenState extends State<StartTripScreen> {
   @override
   void initState() {
     super.initState();
+    zones = _getMockZones();
     _loadLocalContacts();
     _fetchContacts();
     _fetchZones();
+  }
+
+  List<dynamic> _getMockZones() {
+    return [
+      {"name": "Mansoura", "latitude": 31.0409, "longitude": 31.3785},
+      {"name": "El Mahalla El Kubra", "latitude": 30.9763, "longitude": 31.1691},
+      {"name": "Tanta", "latitude": 30.7865, "longitude": 31.0004},
+      {"name": "Cairo", "latitude": 30.0444, "longitude": 31.2357},
+      {"name": "Alexandria", "latitude": 31.2001, "longitude": 29.9187},
+      {"name": "Giza", "latitude": 30.0131, "longitude": 31.2089},
+      {"name": "Zamalek", "latitude": 30.0632, "longitude": 31.2201},
+      {"name": "Maadi", "latitude": 29.9602, "longitude": 31.2569},
+      {"name": "Nasr City", "latitude": 30.0566, "longitude": 31.3435},
+    ];
   }
 
   Future<void> _loadLocalContacts() async {
@@ -59,7 +74,7 @@ class _StartTripScreenState extends State<StartTripScreen> {
     setState(() => isLoadingZones = true);
     try {
       final prefs = await SharedPreferences.getInstance();
-      final String? token = prefs.getString('token');
+      final String? token = prefs.getString('token') ?? prefs.getString('auth_token');
 
       var response = await Dio().get(
         "${ApiConfig.baseUrl}/zones",
@@ -75,14 +90,21 @@ class _StartTripScreenState extends State<StartTripScreen> {
       setState(() {
         if (response.data is Map && response.data['data'] != null) {
           zones = response.data['data'];
+        } else if (response.data is List) {
+          zones = response.data;
         } else {
-          zones = [];
+          zones = _getMockZones();
         }
         isLoadingZones = false;
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() => isLoadingZones = false);
+      setState(() {
+        if (zones.isEmpty) {
+          zones = _getMockZones();
+        }
+        isLoadingZones = false;
+      });
     }
   }
 
@@ -229,6 +251,12 @@ class _StartTripScreenState extends State<StartTripScreen> {
 
   String _getLocalizedZoneName(String englishName) {
     final Map<String, String> translations = {
+      'mansoura': 'المنصورة',
+      'el mahalla el kubra': 'المحلة الكبرى',
+      'mahalla': 'المحلة الكبرى',
+      'tanta': 'طنطا',
+      'cairo': 'القاهرة',
+      'alexandria': 'الإسكندرية',
       'zamalek': 'الزمالك',
       'maadi': 'المعادي',
       'new cairo': 'القاهرة الجديدة',
