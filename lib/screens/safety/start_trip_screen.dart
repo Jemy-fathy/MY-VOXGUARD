@@ -202,7 +202,7 @@ class _StartTripScreenState extends State<StartTripScreen> {
 
     try {
       final prefs = await SharedPreferences.getInstance();
-      final String? token = prefs.getString('token');
+      final String? token = prefs.getString('token') ?? prefs.getString('auth_token');
 
       double lat = selectedLatitude ?? 30.0444;
       double long = selectedLongitude ?? 31.2357;
@@ -267,12 +267,104 @@ class _StartTripScreenState extends State<StartTripScreen> {
         throw Exception('Server returned status: ${response.statusCode}');
       }
     } catch (e) {
+      if (e is DioException &&
+          (e.type == DioExceptionType.connectionTimeout ||
+           e.type == DioExceptionType.sendTimeout ||
+           e.type == DioExceptionType.receiveTimeout ||
+           e.type == DioExceptionType.connectionError ||
+           (e.message != null && e.message!.contains('SocketException')))) {
+        
+        // Show auto-discovery dialog
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const AlertDialog(
+            content: Padding(
+              padding: EdgeInsets.symmetric(vertical: 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text('جاري البحث التلقائي عن السيرفر في الشبكة...'),
+                ],
+              ),
+            ),
+          ),
+        );
+        
+        String? foundIp = await ApiConfig.autoDiscoverServer();
+        if (context.mounted) Navigator.pop(context);
+        
+        if (foundIp != null) {
+          // Retry starting trip with the new IP
+          await _startTrip();
+          return;
+        }
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to start trip: $e'), backgroundColor: Colors.red),
+        SnackBar(
+          content: Text('Failed to start trip: $e'),
+          backgroundColor: Colors.red,
+          action: SnackBarAction(
+            label: 'تحديث الـ IP',
+            textColor: Colors.white,
+            onPressed: () => _showChangeIpDialog(context),
+          ),
+        ),
       );
     } finally {
       if (mounted) setState(() => isStartingTrip = false);
     }
+  }
+
+  void _showChangeIpDialog(BuildContext context) {
+    final TextEditingController ipController = TextEditingController(text: ApiConfig.serverIp);
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('تغيير عنوان السيرفر (Server IP)'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('أدخل عنوان الـ IP الخاص بجهاز الـ Mac حالياً:'),
+            const SizedBox(height: 12),
+            TextField(
+              controller: ipController,
+              decoration: const InputDecoration(
+                hintText: 'مثال: 192.168.1.29',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('إلغاء'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              String newIp = ipController.text.trim();
+              if (newIp.isNotEmpty) {
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.setString('custom_server_ip', newIp);
+                ApiConfig.setServerIp(newIp);
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('تم تحديث الـ IP إلى: $newIp. يرجى المحاولة مجدداً.')),
+                  );
+                }
+              }
+            },
+            child: const Text('حفظ وتحديث'),
+          ),
+        ],
+      ),
+    );
   }
 
   String _localizeDigits(String input) {
