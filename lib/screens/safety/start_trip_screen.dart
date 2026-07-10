@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:ui' as ui;
 import 'dart:convert';
+import 'dart:io';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -772,13 +773,21 @@ class _StartTripScreenState extends State<StartTripScreen> {
             ClipRRect(
               borderRadius: BorderRadius.circular(12),
               child: contact['image'] != null && contact['image'].toString().isNotEmpty
-                  ? Image.network(
-                      contact['image'],
-                      width: 50,
-                      height: 65,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => _buildPlaceholder(),
-                    )
+                  ? (contact['image'].toString().startsWith('http')
+                      ? Image.network(
+                          contact['image'].toString(),
+                          width: 50,
+                          height: 65,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => _buildPlaceholder(),
+                        )
+                      : Image.file(
+                          File(contact['image'].toString()),
+                          width: 50,
+                          height: 65,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => _buildPlaceholder(),
+                        ))
                   : _buildPlaceholder(),
             ),
             const SizedBox(width: 16),
