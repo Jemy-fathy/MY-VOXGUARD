@@ -34,9 +34,20 @@ class _FacebookLoginScreenState extends State<FacebookLoginScreen> {
     try {
       // Mock standard FB user ID derived from the email for consistency
       final String socialId = "fb_${email.hashCode}";
-      final String name = email.split('@').first;
-      final String firstName = name.split('.').first;
-      final String lastName = name.split('.').length > 1 ? name.split('.').last : ".";
+      
+      // Clean parsing of first and last name from email prefix
+      String emailPrefix = email.split('@').first;
+      String firstName = "";
+      String lastName = "";
+      
+      if (emailPrefix.contains('.')) {
+        List<String> parts = emailPrefix.split('.');
+        firstName = parts.first[0].toUpperCase() + parts.first.substring(1).toLowerCase();
+        lastName = parts.last[0].toUpperCase() + parts.last.substring(1).toLowerCase();
+      } else {
+        firstName = emailPrefix[0].toUpperCase() + emailPrefix.substring(1).toLowerCase();
+        lastName = "User";
+      }
 
       final response = await http.post(
         Uri.parse("${ApiConfig.baseUrl}/social-login"),
@@ -64,6 +75,15 @@ class _FacebookLoginScreenState extends State<FacebookLoginScreen> {
         if (data['user'] != null) {
           var user = data['user'];
           await prefs.setString('user_id', (user['id'] ?? 0).toString());
+          if (user['first_name'] != null) {
+            await prefs.setString('first_name', user['first_name'].toString());
+          }
+          if (user['last_name'] != null) {
+            await prefs.setString('last_name', user['last_name'].toString());
+          }
+          if (user['email'] != null) {
+            await prefs.setString('email', user['email'].toString());
+          }
           String displayName = "${user['first_name'] ?? ''} ${user['last_name'] ?? ''}".trim();
           displayName = displayName.replaceAll('FacebookUser', '').trim();
           if (displayName.endsWith('.')) {
