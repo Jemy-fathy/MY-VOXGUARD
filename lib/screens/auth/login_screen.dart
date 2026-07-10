@@ -1,9 +1,13 @@
 import 'dart:convert';
 import 'dart:developer' as dev;
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'facebook_login_screen.dart';
+import '../../config/api_config.dart';
 import '../../config/colors.dart';
 import '../../custom_widgets/custom_button.dart';
 import '../../custom_widgets/custom_text_field.dart';
@@ -24,9 +28,8 @@ class _LoginScreenState extends State<LoginScreen> {
   bool isLoading = false;
   bool isPasswordVisible = false; 
 
-  static const String baseUrl = "http://192.168.1.191:8000/api";
-
   final GoogleSignIn _googleSignIn = GoogleSignIn(
+    clientId: '937671622047-1h87v3mvu4k9i32gc2ouegneu4mpiqf3.apps.googleusercontent.com',
     scopes: ['email', 'profile'],
   );
 
@@ -38,26 +41,83 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _checkRememberedUser() async {
     final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('auth_token'); 
+    final token = prefs.getString('token') ?? prefs.getString('auth_token');
     if (token != null) {
       if (!mounted) return;
       Navigator.pushReplacementNamed(context, '/home');
     }
   }
 
-  void _showMessage(String message) {
+  void _showMessage(String message, {SnackBarAction? action}) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
+      SnackBar(
+        content: Text(message),
+        behavior: SnackBarBehavior.floating,
+        action: action,
+      ),
     );
   }
 
-  Future<void> loginUser() async {
+  void _showChangeIpDialog(BuildContext context) {
+    final TextEditingController ipController = TextEditingController(text: ApiConfig.serverIp);
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('تغيير عنوان السيرفر (Server IP)'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('أدخل عنوان الـ IP الخاص بجهاز الـ Mac حالياً:'),
+            const SizedBox(height: 12),
+            TextField(
+              controller: ipController,
+              decoration: const InputDecoration(
+                hintText: 'مثال: 192.168.1.29',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('إلغاء'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              String newIp = ipController.text.trim();
+              if (newIp.isNotEmpty) {
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.setString('custom_server_ip', newIp);
+                ApiConfig.setServerIp(newIp);
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('تم تحديث الـ IP إلى: $newIp. يرجى المحاولة مجدداً.')),
+                  );
+                }
+              }
+            },
+            child: const Text('حفظ وتحديث'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> loginUser({bool isRetry = false}) async {
+    if (emailController.text.trim().isEmpty || passwordController.text.isEmpty) {
+      _showMessage("please_fill_fields".tr());
+      return;
+    }
+
     setState(() => isLoading = true);
 
     try {
       final response = await http.post(
-        Uri.parse("$baseUrl/login"),
+        Uri.parse(ApiConfig.login),
         headers: {
           "Content-Type": "application/json",
           "Accept": "application/json",
@@ -72,71 +132,239 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (response.statusCode == 200) {
         final prefs = await SharedPreferences.getInstance();
-        if (data['token'] != null) await prefs.setString('auth_token', data['token']);
-        
+
+        if (data['token'] != null) {
+          await prefs.setString('token', data['token']);
+          await prefs.setString('auth_token', data['token']); 
+        }
+
         if (data['user'] != null) {
           var user = data['user'];
-          await prefs.setString('user_id', (user['id'] ?? 0).toString());
-          await prefs.setString('user_name', "${user['first_name'] ?? ''} ${user['last_name'] ?? ''}".trim());
+          if (user['id'] != null) {
+            String userId = user['id'].toString();
+            await prefs.setString('user_id', userId);
+            dev.log("Success: Logged in as User ID: $userId");
+          }
+          if (user['first_name'] != null) {
+            await prefs.setString('first_name', user['first_name']);
+          }
+          if (user['last_name'] != null) {
+            await prefs.setString('last_name', user['last_name']);
+          }
+          String name = "${user['first_name'] ?? ''} ${user['last_name'] ?? ''}".trim();
+          await prefs.setString('user_name', name);
           await prefs.setString('user_image', user['profile_photo_url'] ?? "");
         }
 
         if (!mounted) return;
-        Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
+        _showMessage("welcome_message".tr());
+        Navigator.pushReplacementNamed(context, '/home');
       } else {
-        _showMessage(data["message"] ?? "Invalid credentials");
+        _showMessage(data["message"] ?? "invalid_credentials".tr());
       }
     } catch (e) {
       dev.log("Login Error: $e");
-      _showMessage("Server connection failed.");
+      
+      if (!isRetry) {
+        // Show a temporary dialog while we search the network for the server
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const Center(
+            child: Card(
+              child: Padding(
+                padding: EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 16),
+                    Text('جاري البحث التلقائي عن السيرفر في الشبكة...'),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+        
+        String? foundIp = await ApiConfig.autoDiscoverServer();
+        if (context.mounted) Navigator.pop(context);
+        
+        if (foundIp != null) {
+          // Retry login with the newly found IP address
+          await loginUser(isRetry: true);
+          return;
+        }
+      }
+
+      _showMessage(
+        "server_error".tr(),
+        action: SnackBarAction(
+          label: 'تحديث الـ IP',
+          textColor: Colors.white,
+          onPressed: () => _showChangeIpDialog(context),
+        ),
+      );
     } finally {
       if (mounted) setState(() => isLoading = false);
     }
   }
 
-Future<void> signInWithGoogle() async {
-  setState(() => isLoading = true);
-  try {
-    final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-    if (googleUser == null) {
-      setState(() => isLoading = false);
+  // --- تسجيل الدخول بجوجل ---
+  Future<void> signInWithGoogle() async {
+    // iOS simulators lack GoogleService-Info.plist, so we bypass Safari oauth screen which blocks access
+    if (Platform.isIOS) {
+      _showDemoGoogleDialog();
       return;
     }
 
+    setState(() => isLoading = true);
+    try {
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      if (googleUser == null) {
+        setState(() => isLoading = false);
+        return;
+      }
+
+      await _sendSocialLogin(
+        socialId: googleUser.id,
+        socialType: "google",
+        email: googleUser.email,
+        name: googleUser.displayName ?? "",
+      );
+    } catch (error) {
+      dev.log("Google Sign In Error (using fallback): $error");
+      _showDemoGoogleDialog();
+    } finally {
+      if (mounted) setState(() => isLoading = false);
+    }
+  }
+
+  // --- تسجيل الدخول بفيسبوك ---
+  Future<void> signInWithFacebook() async {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const FacebookLoginScreen()),
+    );
+  }
+
+  Future<void> _sendSocialLogin({
+    required String socialId,
+    required String socialType,
+    required String email,
+    required String name,
+  }) async {
     final response = await http.post(
-      Uri.parse("$baseUrl/social-login"), 
+      Uri.parse("${ApiConfig.baseUrl}/social-login"),
       headers: {"Content-Type": "application/json", "Accept": "application/json"},
       body: jsonEncode({
-        "social_id": googleUser.id,
-        "social_type": "google",
-        "email": googleUser.email,
-        "first_name": googleUser.displayName?.split(' ').first ?? "",
-        "last_name": googleUser.displayName?.split(' ').last ?? "",
+        "social_id": socialId,
+        "social_type": socialType,
+        "email": email.isNotEmpty ? email : "$socialId@demo.com",
+        "first_name": name.isNotEmpty ? name.split(' ').first : "Demo",
+        "last_name": name.split(' ').length > 1 ? name.split(' ').last : "User",
       }),
-    );
+    ).timeout(const Duration(seconds: 10));
 
     final data = jsonDecode(response.body);
-
     if (response.statusCode == 200 || response.statusCode == 201) {
       final prefs = await SharedPreferences.getInstance();
-      
-      await prefs.setString('auth_token', data['token']);
-      
-      if (data['user'] != null) {
-        var user = data['user'];
-        await prefs.setString('user_name', "${user['first_name'] ?? ''} ${user['last_name'] ?? ''}".trim());
+      if (data['token'] != null) {
+        await prefs.setString('token', data['token']);
+        await prefs.setString('auth_token', data['token']);
       }
-      
+        if (data['user'] != null) {
+          var user = data['user'];
+          await prefs.setString('user_id', (user['id'] ?? 0).toString());
+          String displayName = "${user['first_name'] ?? ''} ${user['last_name'] ?? ''}".trim();
+          displayName = displayName.replaceAll('FacebookUser', '').trim();
+          if (displayName.endsWith('.')) {
+            displayName = displayName.substring(0, displayName.length - 1).trim();
+          }
+          await prefs.setString('user_name', displayName);
+          await prefs.setString('user_image', user['profile_photo_url'] ?? "");
+        }
       if (!mounted) return;
+      _showMessage("welcome_message".tr());
       Navigator.pushNamedAndRemoveUntil(context, '/permissions', (route) => false);
     } else {
+      _showMessage("Social Sign-In failed on backend");
     }
-  } catch (error) {
-    dev.log("Google Sign In Error: $error");
-  } finally {
-    if (mounted) setState(() => isLoading = false);
   }
-}
+
+  void _showDemoFacebookDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Facebook Sign-In"),
+        content: const Text("The Facebook SDK is not fully configured on this simulator. Would you like to log in with a test Facebook account?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text("cancel".tr()),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryPurple),
+            onPressed: () async {
+              Navigator.pop(context);
+              setState(() => isLoading = true);
+              try {
+                await _sendSocialLogin(
+                  socialId: "123456789_fb_demo",
+                  socialType: "facebook",
+                  email: "demo_fb_user@gmail.com",
+                  name: "Facebook DemoUser",
+                );
+              } catch (e) {
+                _showMessage("Connection error");
+              } finally {
+                if (mounted) setState(() => isLoading = false);
+              }
+            },
+            child: Text("login".tr()),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDemoGoogleDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Google Sign-In"),
+        content: const Text("Google Sign-In is not fully configured on this simulator. Would you like to log in with a test Google account?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text("cancel".tr()),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryPurple),
+            onPressed: () async {
+              Navigator.pop(context);
+              setState(() => isLoading = true);
+              try {
+                await _sendSocialLogin(
+                  socialId: "987654321_google_demo",
+                  socialType: "google",
+                  email: "demo_google_user@gmail.com",
+                  name: "Google DemoUser",
+                );
+              } catch (e) {
+                _showMessage("Connection error");
+              } finally {
+                if (mounted) setState(() => isLoading = false);
+              }
+            },
+            child: Text("login".tr()),
+          ),
+        ],
+      ),
+    );
+  }
+
+
 
   @override
   void dispose() {
@@ -144,8 +372,6 @@ Future<void> signInWithGoogle() async {
     passwordController.dispose();
     super.dispose();
   }
-
-
 
   @override
   Widget build(BuildContext context) {
@@ -163,7 +389,32 @@ Future<void> signInWithGoogle() async {
         ),
         child: Column(
           children: [
-            const SizedBox(height: 60),
+            SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    // Language Switcher
+                    TextButton.icon(
+                      onPressed: () async {
+                        if (context.locale.languageCode == 'ar') {
+                          await context.setLocale(const Locale('en'));
+                        } else {
+                          await context.setLocale(const Locale('ar'));
+                        }
+                      },
+                      icon: const Icon(Icons.language, color: AppColors.primaryPurple),
+                      label: Text(
+                        context.locale.languageCode == 'ar' ? "العربية" : "English",
+                        style: const TextStyle(color: AppColors.primaryPurple, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
             const AppLogoHeader(),
             Expanded(
               child: Center(
@@ -187,28 +438,29 @@ Future<void> signInWithGoogle() async {
                       children: [
                         _buildGradientTitle(),
                         const SizedBox(height: 8),
-                        const Text(
-                          "Create an account or log in to explore our app",
+                        Text(
+                          "login_subtitle".tr(),
                           textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 13, color: Colors.grey),
+                          style: const TextStyle(fontSize: 13, color: Colors.grey),
                         ),
                         const SizedBox(height: 25),
-                        _socialButton("Sign in with Google", 'images/google_icon.png', isLoading ? null : signInWithGoogle),
+                        _socialButton("sign_in_google".tr(), 'images/google_icon.png', isLoading ? null : signInWithGoogle),
                         const SizedBox(height: 12),
+                        _socialButton("sign_in_facebook".tr(), 'images/facebook_icon.png', isLoading ? null : signInWithFacebook),
                         const SizedBox(height: 20),
                         _buildDivider(),
                         const SizedBox(height: 20),
                         CustomTextField(
                           controller: emailController,
-                          label: "Email or Phone",
-                          hintText: "Enter your email or phone",
+                          label: "email_phone".tr(),
+                          hintText: "enter_email_phone".tr(),
                         ),
                         _buildPasswordField(),
                         _buildRememberMeRow(),
                         const SizedBox(height: 30),
                         isLoading
                             ? const CircularProgressIndicator(color: AppColors.primaryPurple)
-                            : CustomButton(text: "Log In", onPressed: loginUser),
+                            : CustomButton(text: "login".tr(), onPressed: loginUser),
                         const SizedBox(height: 20),
                         _buildSignUpRow(),
                       ],
@@ -226,16 +478,16 @@ Future<void> signInWithGoogle() async {
   Widget _buildGradientTitle() {
     return ShaderMask(
       shaderCallback: (bounds) => const LinearGradient(colors: AppColors.logoGradient).createShader(bounds),
-      child: const Text("Get Started now", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
+      child: Text("get_started_now".tr(), style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
     );
   }
 
-  Widget _buildDivider() {
-    return const Row(
+  Widget  _buildDivider() {
+    return Row(
       children: [
-        Expanded(child: Divider()),
-        Padding(padding: EdgeInsets.symmetric(horizontal: 10), child: Text("Or", style: TextStyle(color: Colors.grey))),
-        Expanded(child: Divider()),
+        const Expanded(child: Divider()),
+        Padding(padding: const EdgeInsets.symmetric(horizontal: 10), child: Text("or".tr(), style: const TextStyle(color: Colors.grey))),
+        const Expanded(child: Divider()),
       ],
     );
   }
@@ -243,7 +495,7 @@ Future<void> signInWithGoogle() async {
   Widget _buildPasswordField() {
     return CustomTextField(
       controller: passwordController,
-      label: "Password",
+      label: "password".tr(),
       isPassword: !isPasswordVisible,
     );
   }
@@ -260,11 +512,11 @@ Future<void> signInWithGoogle() async {
           ),
         ),
         const SizedBox(width: 8),
-        const Text("Remember me", style: TextStyle(fontSize: 12)),
+        Text("remember_me".tr(), style: const TextStyle(fontSize: 12)),
         const Spacer(),
         GestureDetector(
           onTap: () => Navigator.pushNamed(context, '/forgot_password'),
-          child: const Text("Forgot Password ?", style: TextStyle(fontSize: 12, color: AppColors.primaryPurple, fontWeight: FontWeight.bold)),
+          child: Text("forgot_password".tr(), style: const TextStyle(fontSize: 12, color: AppColors.primaryPurple, fontWeight: FontWeight.bold)),
         ),
       ],
     );
@@ -274,10 +526,10 @@ Future<void> signInWithGoogle() async {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        const Text("Don't have an account? "),
+        Text("${"dont_have_account".tr()} "),
         GestureDetector(
           onTap: () => Navigator.pushNamed(context, '/signup'),
-          child: const Text("Sign Up", style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.primaryPurple)),
+          child: Text("sign_up".tr(), style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primaryPurple)),
         ),
       ],
     );

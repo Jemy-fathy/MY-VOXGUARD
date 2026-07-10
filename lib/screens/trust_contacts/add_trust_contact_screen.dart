@@ -3,6 +3,7 @@ import '../../config/colors.dart';
 import '../../custom_widgets/custom_button.dart';
 import '../../custom_widgets/logo_header.dart';
 import '../voice_password/voice_password_intro_screen.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 class AddTrustedContactsScreen extends StatelessWidget {
   const AddTrustedContactsScreen({super.key});
@@ -38,11 +39,11 @@ class AddTrustedContactsScreen extends StatelessWidget {
                 shaderCallback: (bounds) => const LinearGradient(
                   colors: AppColors.logoGradient,
                 ).createShader(bounds),
-                child: const SizedBox(
+                child: SizedBox(
                   width: 336,
                   height: 34,
                   child: Text(
-                    "Add your trusted contacts",
+                    "add_your_trusted_contacts".tr(),
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 24,
@@ -53,15 +54,15 @@ class AddTrustedContactsScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 20),
-              const SizedBox(
+              SizedBox(
                 width: 386,
                 height: 173,
                 child: Padding(
                   padding: EdgeInsets.symmetric(horizontal: 40),
                   child: Text(
-                    "Add Trusted Friends and Family to your Private Safe Circle. They Will be Instantly Notified With Your Location If You Ever Need Help.",
+                    "add_trusted_contacts_desc".tr(),
                     textAlign: TextAlign.center,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 14,
                       color: Colors.grey,
                       height: 1.5,
@@ -75,7 +76,7 @@ Padding(
   child: Column(
     children: [
       CustomButton(
-        text: "Add trusted contacts",
+        text: "add_trusted_contacts_btn".tr(),
         onPressed: () => Navigator.pushNamed(context, '/add_contact'),
       ),
       const SizedBox(height: 12),
@@ -97,9 +98,9 @@ Padding(
               borderRadius: BorderRadius.circular(10),
             ),
           ),
-          child: const Text(
-            "Skip for now",
-            style: TextStyle(color: Colors.black, fontSize: 16),
+          child: Text(
+            "skip_for_now".tr(),
+            style: const TextStyle(color: Colors.black, fontSize: 16),
           ),
         ),
       ),

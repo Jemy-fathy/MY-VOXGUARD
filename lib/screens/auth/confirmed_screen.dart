@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../../config/colors.dart';
 import '../../custom_widgets/custom_button.dart';
 import '../../custom_widgets/logo_header.dart';
@@ -9,6 +10,7 @@ class ConfirmedScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool isArabic = context.locale.languageCode == 'ar';
     return Scaffold(
       body: Container(
         width: double.infinity,
@@ -38,25 +40,31 @@ class ConfirmedScreen extends StatelessWidget {
                 child: Column(
                   children: [
                     Align(
-                      alignment: Alignment.centerLeft,
+                      alignment: isArabic ? Alignment.centerRight : Alignment.centerLeft,
                       child: IconButton(
-                        onPressed: () => Navigator.pop(context),
-                        icon: const Icon(Icons.arrow_back),
-                      ),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                                onPressed: () => Navigator.pop(context),
+                                icon: const Icon(
+                                  Icons.arrow_back, 
+                                  color: Colors.black, 
+                                  size: 28
+                                ),
+                              ),
                     ),
                     ShaderMask(
                       shaderCallback: (bounds) => const LinearGradient(
                         colors: AppColors.logoGradient,
                       ).createShader(bounds),
-                      child: const Text(
-                        "Sign Up confirmed",
+                      child: Text(
+                        "signup_confirmed".tr(),
                         textAlign: TextAlign.center,
                         style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
                       ),
                     ),
                     const SizedBox(height: 35),
                     CustomButton(
-                     text: "Add Emergency information",
+                     text: "add_emergency_info".tr(),
                      onPressed: () {
                       Navigator.push(
                        context,
@@ -76,8 +84,8 @@ class ConfirmedScreen extends StatelessWidget {
                           side: const BorderSide(color: Color(0xFF375DFB), width: 1),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         ),
-                        child: const Text(
-                          "skip for now",
+                        child: Text(
+                          "skip_for_now".tr(),
                           style: TextStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.w600),
                         ),
                       ),

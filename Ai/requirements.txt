@@ -1,0 +1,11 @@
+# Requirements for Railway deployment
+fastapi==0.111.0
+uvicorn[standard]==0.29.0
+python-multipart==0.0.9
+torch==2.3.0+cpu
+torchaudio==2.3.0+cpu
+transformers==4.40.2
+numpy==1.26.4
+scipy==1.13.0
+librosa==0.10.2
+accelerate==0.30.0

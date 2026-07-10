@@ -61,16 +61,16 @@ void onStart(ServiceInstance service) async {
     _log('🤖 AI Mode updated to: $enabled');
   });
 
-service.on('startManualSos').listen((event) async {
-  final reason = event?['reason'] ?? 'Manual SOS'; 
-  final path = event?['evidence_path'];
-  await triggerSos(
-    isManual: reason == 'manual',
-    reason: reason, 
-    emotion: reason == 'ai_emotion_confirmed' ? 'detected' : null,
-    evidencePath: path,
-  );
-});
+  service.on('startManualSos').listen((event) async {
+    final reason = event?['reason'] ?? 'Manual SOS';
+    final path = event?['evidence_path'];
+    await triggerSos(
+      isManual: reason == 'manual',
+      reason: reason,
+      emotion: reason == 'ai_emotion_confirmed' ? 'detected' : null,
+      evidencePath: path,
+    );
+  });
 
   service.on('stopSosSafe').listen((_) async {
     await audioRecorder.stop();
@@ -83,7 +83,11 @@ service.on('startManualSos').listen((event) async {
   service.invoke('serviceStarted');
 }
 
-Future<void> triggerSos({required bool isManual, String? emotion, String? evidencePath, required String reason}) async {
+Future<void> triggerSos(
+    {required bool isManual,
+    String? emotion,
+    String? evidencePath,
+    required String reason}) async {
   final prefs = await SharedPreferences.getInstance();
   await prefs.setBool('sos_active', true);
   await prefs.setBool('should_show_sos_screen', true);
@@ -92,7 +96,8 @@ Future<void> triggerSos({required bool isManual, String? emotion, String? eviden
 
   Position? pos;
   try {
-    pos = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+    pos = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high);
   } catch (e) {
     await _log('❌ Location fetch error: $e');
   }
@@ -115,7 +120,7 @@ Future<void> triggerSos({required bool isManual, String? emotion, String? eviden
     if (response.statusCode == 200) {
       final sosId = jsonDecode(response.body)['sos_id'];
       await prefs.setInt('active_sos_id', sosId);
-       activeSosIdInMemory = sosId; 
+      activeSosIdInMemory = sosId;
 
       if (evidencePath != null && await File(evidencePath).exists()) {
         await uploadRecordingToBackend(evidencePath, sosId: sosId);
@@ -131,12 +136,16 @@ Future<void> triggerSos({required bool isManual, String? emotion, String? eviden
   }
 }
 
-Future<void> uploadRecordingToBackend(String filePath, {required int sosId}) async {
+Future<void> uploadRecordingToBackend(String filePath,
+    {required int sosId}) async {
   try {
     final prefs = await SharedPreferences.getInstance();
-    var request = http.MultipartRequest('POST', Uri.parse('${ApiConfig.sosBaseUrl}/$sosId/upload-audio'));
-    request.files.add(await http.MultipartFile.fromPath('audio_file', filePath));
-    request.headers.addAll({'Authorization': 'Bearer ${prefs.getString('auth_token')}'});
+    var request = http.MultipartRequest(
+        'POST', Uri.parse('${ApiConfig.sosBaseUrl}/$sosId/upload-audio'));
+    request.files
+        .add(await http.MultipartFile.fromPath('audio_file', filePath));
+    request.headers
+        .addAll({'Authorization': 'Bearer ${prefs.getString('auth_token')}'});
     await request.send();
     await _log('📤 Audio evidence uploaded for SOS: $sosId');
   } catch (e) {
@@ -150,11 +159,16 @@ Future<void> _runLocationReportingLoop(int sosId, String token) async {
     final prefs = await SharedPreferences.getInstance();
     if (prefs.getBool('sos_active') != true) break;
     try {
-      Position pos = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+      Position pos = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high);
       await http.post(
         Uri.parse('${ApiConfig.sosBaseUrl}/$sosId/update-location'),
-        headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
-        body: jsonEncode({'latitude': pos.latitude, 'longitude': pos.longitude}),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json'
+        },
+        body:
+            jsonEncode({'latitude': pos.latitude, 'longitude': pos.longitude}),
       );
     } catch (e) {
       await _log('❌ Location loop error: $e');
@@ -169,7 +183,9 @@ Future<void> _log(String message) async {
     final prefs = await SharedPreferences.getInstance();
     final List<String> log = prefs.getStringList(kSosBgLogKey) ?? <String>[];
     log.add('${DateTime.now().toIso8601String()} | $message');
-    if (log.length > _kSosLogMaxEntries) log.removeRange(0, log.length - _kSosLogMaxEntries);
+    if (log.length > _kSosLogMaxEntries) {
+      log.removeRange(0, log.length - _kSosLogMaxEntries);
+    }
     await prefs.setStringList(kSosBgLogKey, log);
   } catch (_) {}
 }

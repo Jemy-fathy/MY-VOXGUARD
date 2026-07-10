@@ -10,43 +10,64 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  flutter_map: ^6.1.0         
-  latlong2: ^0.9.0            
-  geolocator: ^10.1.0
-  google_maps_flutter: ^2.5.0
-  intl_phone_field: ^3.2.0
-  permission_handler: ^11.3.1
-  http: ^1.6.0
-  cupertino_icons: ^1.0.8
-  url_launcher: ^6.3.2
-  shared_preferences: ^2.5.4
-  geocoding: ^4.0.0
-  image_picker: ^1.2.1
-  audioplayers: ^5.2.1
-  dio: ^5.9.2
-  google_sign_in: ^6.2.1
-  path: ^1.9.1
-  path_provider: ^2.1.5
-  record: ^6.2.0
-  file_picker: ^11.0.2
-  flutter_background_service: ^5.1.0
-  flutter_local_notifications: ^20.1.0
-  wakelock_plus: ^1.4.0
+  
+  # --- الخرائط والموقع الجغرافي ---
+  flutter_map: ^6.1.0         # مكتبة خرائط مفتوحة المصدر (بديلة لخرائط جوجل تعتمد على OpenStreetMap)
+  latlong2: ^0.9.0            # للتعامل مع العمليات الحسابية وإحداثيات خطوط الطول والعرض (Latitude/Longitude)
+  geolocator: ^10.1.0         # لتحديد موقع المستخدم الجغرافي الحالي وجلب إحداثياته عبر الـ GPS
+  google_maps_flutter: ^2.5.0 # مكتبة خرائط جوجل الرسمية (في حال رغبت بالاعتماد عليها)
+  geocoding: ^4.0.0           # لتحويل الإحداثيات الجغرافية إلى عناوين نصية (أسماء شوارع/مدن) والعكس
+
+  # --- واجهة المستخدم والمدخلات ---
+  intl_phone_field: ^3.2.0    # حقل إدخال أرقام الهواتف مع تحديد كود الدولة تلقائياً وقوائم منسدلة بأعلام الدول
+  cupertino_icons: ^1.0.8     # توفير الأيقونات الخاصة بنظام تشغيل iOS (أيقونات آبل)
+
+  # --- الصلاحيات والاتصال بالشبكة ---
+  permission_handler: ^11.3.1 # إدارة وطلب صلاحيات النظام (مثل الكاميرا، الموقع، الميكروفون، التخزين)
+  http: ^1.6.0                # لإرسال واستقبال طلبات الـ HTTP (API) الأساسية من السيرفر
+  dio: ^5.9.2                 # مكتبة متقدمة وقوية لإدارة طلبات الـ API (تدعم رفع الملفات، إلغاء الطلبات، والـ Interceptors)
+  url_launcher: ^6.3.2        # لفتح الروابط الخارجية، إجراء المكالمات، إرسال رسائل نصية أو بريد إلكتروني
+
+  # --- إدارة الملفات والتخزين المحلي ---
+  shared_preferences: ^2.5.4  # لحفظ البيانات البسيطة والنصوص محلياً في جهاز المستخدم (كالإعدادات وحالة تسجيل الدخول)
+  image_picker: ^1.2.1        # للسماح للمستخدم بالتقاط الصور بالفيديو عبر الكاميرا أو اختيارها من معرض الصور
+  file_picker: ^11.0.2        # للسماح للمستخدم باختيار ملفات بمختلف الصيغ (PDF, Word, إلخ) من ذاكرة الجهاز
+  path: ^1.9.1                # للتعامل مع مسارات الملفات وتعديلها أو دمجها بشكل متوافق مع كافة الأنظمة
+  path_provider: ^2.1.5       # للوصول إلى المسارات والمسؤولة عن تخزين الملفات على نظام الأندرويد والـ iOS (مثل مجلد المستندات أو الكاش)
+
+  # --- الصوت والذكاء الاصطناعي والصوتيات ---
+  audioplayers: ^5.2.1        # لتشغيل الملفات الصوتية والمؤثرات الصوتية في التطبيق
+  record: ^6.2.0              # لتسجيل الصوت عبر ميكروفون الجهاز وحفظه كملفات صوتية
+  speech_to_text: ^7.0.0      # لتحويل الكلام المنطوق (عبر الميكروفون) إلى نصوص مكتوبة بالذكاء الاصطناعي
+  noise_meter: ^5.0.2         # لقياس مستوى الضوضاء والصوت المحيط (بالديسيبل - Decibel) عبر الميكروفون
+
+  # --- خدمات الخلفية والتنبيهات ---
+  flutter_foreground_task: ^9.0.0     # لتشغيل وظائف في الخلفية كخدمة ظاهرية (Foreground Service) تضمن عدم إغلاق التطبيق بواسطة النظام
+  flutter_background_service: ^5.1.0  # لتنفيذ مهام برمجية مستمرة في خلفية الجهاز حتى عند إغلاق التطبيق
+  flutter_local_notifications: ^20.1.0 # لإنشاء وإظهار التنبيهات المحلية (Local Notifications) على شاشة الجهاز
+  wakelock_plus: ^1.4.0               # لمنع شاشة الهاتف من الانطفاء أو الدخول في وضع السكون أثناء تشغيل التطبيق
+
+  # --- خدمات أخرى وعمليات تسجيل الدخول ---
+  google_sign_in: ^6.2.1      # لتفعيل خاصية تسجيل الدخول في التطبيق باستخدام حساب جوجل (Google Auth)
+  flutter_blue_plus: ^1.31.0  # للاتصال والتعامل مع الأجهزة القريبة عبر البلوتوث (Bluetooth Low Energy - BLE)
+  easy_localization: ^3.0.7   # لإدارة وترجمة التطبيق إلى لغات متعددة وتغيير لغة الواجهات بسهولة
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^6.0.0
-  flutter_launcher_icons: ^0.13.1
+  flutter_lints: ^6.0.0       # لتحليل الكود وتطبيق أفضل الممارسات البرمجية وتنبيهك بالأخطاء أثناء الكتابة
+  flutter_launcher_icons: ^0.13.1 # لتوليد وتغيير أيقونات التطبيق تلقائياً لكافة مقاسات الأندرويد والـ iOS بضغطة زر
+
+# إعدادات أيقونة التطبيق للأندرويد والآيفون
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  remove_alpha_ios: true
+  image_path: "images/logo.png"
 
 flutter:
   uses-material-design: true
   assets:
     - images/
     - assets/audio/
-
-flutter_launcher_icons:
-  android: true
-  ios: true
-  image_path: "images/logo.png"
-  remove_alpha_ios: true
+    - assets/translations/    # مجلد ملفات الترجمة (JSON) المعتمد في تطبيقك

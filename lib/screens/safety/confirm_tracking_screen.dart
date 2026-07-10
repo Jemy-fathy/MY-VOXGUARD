@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-
+import 'package:easy_localization/easy_localization.dart';
 import '../../config/colors.dart';
+import 'are_you_okay_screen.dart';
 
 class ConfirmTrackingScreen extends StatelessWidget {
   const ConfirmTrackingScreen({super.key});
@@ -16,10 +17,11 @@ class ConfirmTrackingScreen extends StatelessWidget {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-            AppColors.bgBlueLight, AppColors.bgPurpleLight, Colors.white
-
+              AppColors.bgBlueLight,
+              AppColors.bgPurpleLight,
+              Colors.white
             ],
-            stops:  [0.0, 0.3, 0.7],
+            stops: [0.0, 0.3, 0.7],
           ),
         ),
         child: SafeArea(
@@ -70,15 +72,12 @@ class ConfirmTrackingScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      GestureDetector(
-                        onTap: () {
-                          Navigator.pop(context);
-                        },
-                        child: const Icon(
-                          Icons.arrow_back,
-                          color: Colors.black87,
-                        ),
-                      ),
+                     IconButton(
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            onPressed: () => Navigator.pop(context),
+                            icon: const Icon(Icons.arrow_back, color: Colors.black, size: 28),
+                          ),
                       const SizedBox(height: 24),
                       Center(
                         child: ShaderMask(
@@ -89,10 +88,10 @@ class ConfirmTrackingScreen extends StatelessWidget {
                               Color(0XFFFBACB7),
                             ],
                           ).createShader(bounds),
-                          child: const Text(
-                            'Are you sure ,you want to turnoff tracking ?',
+                          child: Text(
+                            'stop_tracking_confirm'.tr(),
                             textAlign: TextAlign.center,
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontSize: 26,
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
@@ -112,8 +111,11 @@ class ConfirmTrackingScreen extends StatelessWidget {
                         ),
                         child: ElevatedButton(
                           onPressed: () {
-                            Navigator.of(context)
-                                .popUntil((route) => route.isFirst);
+                            Navigator.pushNamedAndRemoveUntil(
+                              context,
+                              '/home',
+                              (route) => false,
+                            );
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFFD546F3),
@@ -122,9 +124,9 @@ class ConfirmTrackingScreen extends StatelessWidget {
                               borderRadius: BorderRadius.circular(13),
                             ),
                           ),
-                          child: const Text(
-                            'YES',
-                            style: TextStyle(
+                          child: Text(
+                            'yes'.tr(),
+                            style: const TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
@@ -146,7 +148,12 @@ class ConfirmTrackingScreen extends StatelessWidget {
                         ),
                         child: ElevatedButton(
                           onPressed: () {
-                            Navigator.pop(context);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const AreYouOkayScreen(),
+                              ),
+                            );
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.transparent,
@@ -155,9 +162,9 @@ class ConfirmTrackingScreen extends StatelessWidget {
                               borderRadius: BorderRadius.circular(13),
                             ),
                           ),
-                          child: const Text(
-                            'NO',
-                            style: TextStyle(
+                          child: Text(
+                            'no'.tr(),
+                            style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
                               color: Colors.black87,

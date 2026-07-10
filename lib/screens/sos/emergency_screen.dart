@@ -1,30 +1,13 @@
 import 'dart:async';
-
 import 'package:flutter/material.dart';
-
+import 'package:easy_localization/easy_localization.dart';
+import 'dart:ui' as ui;
 import '../../config/colors.dart';
 import '../../custom_widgets/custom_button.dart';
 import 'home_screen.dart';
 import 'safe_screen.dart';
 import 'sos_service.dart';
 
-/// The manual-SOS grace screen.
-///
-/// After the user presses the SOS button this screen runs a short countdown so
-/// an accidental tap can be cancelled. When the countdown completes it opens an
-/// SOS session on the server, launches the background guard (live location +
-/// audio recording) and hands off to [SafeHomeScreen].
-///
-/// Flow:
-/// ```
-/// countdown ──(reaches 0)──▶ dispatching ──(success)──▶ SafeHomeScreen
-///     │                          │
-///   cancel                     failure
-///     ▼                          ▼
-///  HomeScreen                  error ──(retry)──▶ dispatching
-///                                │
-///                              cancel ─▶ HomeScreen
-/// ```
 class EmergencyScreen extends StatefulWidget {
   const EmergencyScreen({super.key});
 
@@ -32,11 +15,9 @@ class EmergencyScreen extends StatefulWidget {
   State<EmergencyScreen> createState() => _EmergencyScreenState();
 }
 
-/// What the screen is currently doing.
 enum _Phase { countdown, dispatching, error }
 
 class _EmergencyScreenState extends State<EmergencyScreen> {
-  /// Length of the cancel grace period, in seconds.
   static const int _countdownSeconds = 3;
 
   final SosService _sosService = const SosService();
@@ -45,12 +26,8 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
   int _secondsRemaining = _countdownSeconds;
   _Phase _phase = _Phase.countdown;
 
-  // Alert options the user can toggle while the countdown is still running.
   bool _shareLocation = true;
   bool _recordAudio = true;
-
-  // Raised when the user aborts so an in-flight dispatch can clean up the
-  // session it may have just created instead of leaving it open on the server.
   bool _aborted = false;
 
   @override
@@ -76,15 +53,11 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
     });
   }
 
-  /// Opens the SOS session, starts the background guard, then routes to the
-  /// active-alert screen. Surfaces an [_Phase.error] state on failure.
   Future<void> _dispatchSos() async {
     setState(() => _phase = _Phase.dispatching);
 
     final session = await _sosService.startSession(triggerType: 'manual');
 
-    // The user aborted (or left the screen) while the request was in flight:
-    // close the freshly-created session so nothing keeps running server-side.
     if (!mounted || _aborted) {
       if (session != null) {
         await _sosService.cancelSession(session);
@@ -117,7 +90,6 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
     );
   }
 
-  /// Aborts the alert and returns home. Safe to call in any phase.
   void _abort() {
     _countdownTimer?.cancel();
     _aborted = true;
@@ -127,13 +99,11 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
     );
   }
 
-  /// Retries dispatch after a failure (the grace period is not repeated).
   void _retry() => _dispatchSos();
-
-  // --- UI ------------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
+    final isArabic = context.locale.languageCode == 'ar';
     return Scaffold(
       body: Container(
         width: double.infinity,
@@ -173,7 +143,7 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
               const Spacer(),
               _ActionCard(
                 icon: Icons.location_on,
-                label: 'Share live location',
+                label: 'share_live_location_label'.tr(),
                 value: _shareLocation,
                 onChanged: _canEditOptions
                     ? (value) => setState(() => _shareLocation = value)
@@ -182,7 +152,7 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
               const SizedBox(height: 16),
               _ActionCard(
                 icon: Icons.mic_rounded,
-                label: 'Record audio',
+                label: 'recording_audio'.tr(),
                 value: _recordAudio,
                 onChanged: _canEditOptions
                     ? (value) => setState(() => _recordAudio = value)
@@ -200,23 +170,20 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
     );
   }
 
-  /// Options can only be changed while the countdown is still running.
   bool get _canEditOptions => _phase == _Phase.countdown;
 
   String get _title => switch (_phase) {
-        _Phase.countdown => 'SOS Mode Activated',
-        _Phase.dispatching => 'Sending SOS…',
-        _Phase.error => "Couldn't send SOS",
+        _Phase.countdown => 'sos_mode_activated'.tr(),
+        _Phase.dispatching => context.locale.languageCode == 'ar' ? 'جاري إرسال الاستغاثة...' : 'Sending SOS…',
+        _Phase.error => context.locale.languageCode == 'ar' ? 'تعذر إرسال الاستغاثة' : "Couldn't send SOS",
       };
 
   String get _subtitle => switch (_phase) {
-        _Phase.countdown => 'Sending alerts to your emergency contacts',
-        _Phase.dispatching => 'Contacting your emergency contacts',
-        _Phase.error => 'Check your connection and try again',
+        _Phase.countdown => 'sending_alerts'.tr(),
+        _Phase.dispatching => context.locale.languageCode == 'ar' ? 'جاري الاتصال بجهات اتصال الطوارئ' : 'Contacting your emergency contacts',
+        _Phase.error => context.locale.languageCode == 'ar' ? 'تأكد من الاتصال بالإنترنت وأعد المحاولة' : 'Check your connection and try again',
       };
 
-  /// The large central status element: the countdown number, a spinner while
-  /// dispatching, or an error glyph.
   Widget _indicator() {
     switch (_phase) {
       case _Phase.countdown:
@@ -248,29 +215,33 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
   }
 
   Widget _actions() {
+    final isArabic = context.locale.languageCode == 'ar';
     if (_phase == _Phase.error) {
       return Column(
         children: [
-          CustomButton(text: 'Try Again', onPressed: _retry),
+          CustomButton(
+            text: isArabic ? 'إعادة المحاولة' : 'Try Again', 
+            onPressed: _retry
+          ),
           const SizedBox(height: 8),
           TextButton(
             onPressed: _abort,
-            child: const Text(
-              'Back to Home',
-              style: TextStyle(color: Colors.black54),
+            child: Text(
+              isArabic ? 'العودة للرئيسية' : 'Back to Home',
+              style: const TextStyle(color: Colors.black54),
             ),
           ),
         ],
       );
     }
 
-    // Countdown and dispatching share a single cancel action.
-    return CustomButton(text: 'Cancel SOS', onPressed: _abort);
+    return CustomButton(
+      text: 'cancel_sos'.tr(), 
+      onPressed: _abort
+    );
   }
 }
 
-/// A pill-shaped toggle row for an alert option (live location / audio).
-/// A `null` [onChanged] renders the switch as disabled.
 class _ActionCard extends StatelessWidget {
   const _ActionCard({
     required this.icon,
@@ -286,6 +257,7 @@ class _ActionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isArabic = context.locale.languageCode == 'ar';
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 25),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -293,15 +265,16 @@ class _ActionCard extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(40),
         boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10),
+          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10),
         ],
       ),
       child: Row(
+        textDirection: isArabic ? ui.TextDirection.rtl : ui.TextDirection.ltr,
         children: [
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: AppColors.primaryPurple.withValues(alpha: 0.1),
+              color: AppColors.primaryPurple.withOpacity(0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(icon, color: AppColors.primaryPurple, size: 24),
@@ -310,6 +283,7 @@ class _ActionCard extends StatelessWidget {
           Expanded(
             child: Text(
               label,
+              textAlign: isArabic ? TextAlign.right : TextAlign.left,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
             ),
           ),

@@ -1,5 +1,7 @@
-import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
+import 'dart:ui' as ui;
+import 'package:easy_localization/easy_localization.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:vox_guard/screens/fake_call/incoming_fake_call_dad.dart';
 import 'package:vox_guard/screens/fake_call/incoming_fake_call_mom.dart';
 import 'package:vox_guard/screens/fake_call/incoming_fake_call_police.dart';
@@ -7,77 +9,39 @@ import 'fake_call_success_screen.dart';
 
 class FakeCallScreen extends StatefulWidget {
   const FakeCallScreen({super.key});
-
   @override
   State<FakeCallScreen> createState() => _FakeCallScreenState();
 }
 
 class _FakeCallScreenState extends State<FakeCallScreen> {
-  String selectedCaller = 'Mom';
-  String selectedTime = 'Now';
-  String selectedRingtone = 'Default Ringtone';
-  final AudioPlayer _audioPlayer = AudioPlayer();
+  String selectedCaller = 'mom';
+  String selectedTime = 'now';
+  String selectedRingtone = 'ringtone_default';
 
   final List<String> ringtones = [
-    'Default Ringtone',
-    'Classic Bell',
-    'Modern Alert',
-    'Exciting Beat',
-    'iPhone Remix',
-    'Soft Melody',
+    'ringtone_default',
+    'ringtone_classic',
+    'ringtone_modern',
+    'ringtone_exciting',
+    'ringtone_iphone',
+    'ringtone_soft',
   ];
-
   final List<String> timeOptions = [
-    'Now',
-    '30sec',
-    '1min',
-    '5min',
-    '10min',
-    '30min',
-    '1hour',
-    '1.5hour',
-    '2hour',
-    '3hour',
+    'now',
+    'sec_30',
+    'min_1',
+    'min_5',
+    'min_10',
+    'min_30',
+    'hour_1',
+    'hour_1_5',
+    'hour_2',
+    'hour_3',
   ];
 
   @override
   void dispose() {
-    _audioPlayer.stop();
-    _audioPlayer.dispose();
     super.dispose();
-  }
-
-  Future<void> _previewRingtone(String ringtoneName) async {
-    String fileName = 'default_ringtone.mp3';
-    switch (ringtoneName) {
-      case 'Default Ringtone':
-        fileName = 'default_ringtone.mp3';
-        break;
-      case 'Classic Bell':
-        fileName = 'classic_bell.mp3';
-        break;
-      case 'Modern Alert':
-        fileName = 'modern_alert.mp3';
-        break;
-      case 'Exciting Beat':
-        fileName = 'exciting_beat.mp3';
-        break;
-      case 'iPhone Remix':
-        fileName = 'iphone_remix.mp3';
-        break;
-      case 'Soft Melody':
-        fileName = 'soft_melody.mp3';
-        break;
-    }
-
-    try {
-      AudioCache.instance.prefix = '';
-      await _audioPlayer.stop();
-      await _audioPlayer.setSource(AssetSource('assets/audio/$fileName'));
-      await _audioPlayer.resume();
-    } catch (e) {
-      debugPrint('Error previewing ringtone: $e');
-    }
   }
 
   @override
@@ -96,20 +60,24 @@ class _FakeCallScreenState extends State<FakeCallScreen> {
                 colors: [Color(0xFFB196F9), Color(0xFFCB30E0)],
               ),
             ),
-            padding: const EdgeInsets.only(top: 40, left: 10),
+            padding: const EdgeInsets.only(top: 40, left: 10, right: 10),
             child: Row(
+              textDirection: context.locale.languageCode == 'ar'
+                  ? ui.TextDirection.rtl
+                  : ui.TextDirection.ltr,
               children: [
                 IconButton(
                   icon: const Icon(
-                    Icons.arrow_back_ios,
+                    Icons.arrow_back_ios_new_rounded,
                     color: Colors.white,
-                    size: 20,
+                    size: 24,
                   ),
                   onPressed: () => Navigator.pop(context),
                 ),
-                const Text(
-                  'Fake call',
-                  style: TextStyle(
+                const SizedBox(width: 8),
+                Text(
+                  'fake_call_title'.tr(),
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
@@ -130,18 +98,18 @@ class _FakeCallScreenState extends State<FakeCallScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildGradientTitle("Who's Calling ?"),
+                    _buildGradientTitle('whos_calling'.tr()),
                     const SizedBox(height: 20),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        _buildCallerItem('Mom', 'images/Woman.png'),
-                        _buildCallerItem('Dad', 'images/Man.png'),
-                        _buildCallerItem('Police', 'images/Police.png'),
+                        _buildCallerItem('mom', 'images/Woman.png'),
+                        _buildCallerItem('dad', 'images/Man.png'),
+                        _buildCallerItem('police', 'images/Police.png'),
                       ],
                     ),
                     const SizedBox(height: 35),
-                    _buildGradientTitle("When to call ?"),
+                    _buildGradientTitle('when_to_call'.tr()),
                     const SizedBox(height: 16),
                     Column(
                       children: [
@@ -161,7 +129,7 @@ class _FakeCallScreenState extends State<FakeCallScreen> {
                       ],
                     ),
                     const SizedBox(height: 35),
-                    _buildGradientTitle("Ringtone"),
+                    _buildGradientTitle('ringtone'.tr()),
                     const SizedBox(height: 12),
                     _buildRingtoneDropdown(),
                     const SizedBox(height: 50),
@@ -176,11 +144,11 @@ class _FakeCallScreenState extends State<FakeCallScreen> {
     );
   }
 
-  Widget _buildCallerItem(String name, String imagePath) {
-    bool isSelected = selectedCaller == name;
+  Widget _buildCallerItem(String key, String imagePath) {
+    bool isSelected = selectedCaller == key;
     return GestureDetector(
       onTap: () {
-        setState(() => selectedCaller = name);
+        setState(() => selectedCaller = key);
       },
       child: Container(
         width: MediaQuery.of(context).size.width * 0.28,
@@ -214,7 +182,7 @@ class _FakeCallScreenState extends State<FakeCallScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              name,
+              key.tr(),
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 14,
@@ -227,10 +195,10 @@ class _FakeCallScreenState extends State<FakeCallScreen> {
     );
   }
 
-  Widget _timeChip(String text) {
-    bool isSelected = selectedTime == text;
+  Widget _timeChip(String key) {
+    bool isSelected = selectedTime == key;
     return GestureDetector(
-      onTap: () => setState(() => selectedTime = text),
+      onTap: () => setState(() => selectedTime = key),
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 2),
         padding: const EdgeInsets.symmetric(vertical: 10),
@@ -245,7 +213,7 @@ class _FakeCallScreenState extends State<FakeCallScreen> {
           ),
         ),
         child: Text(
-          text,
+          key.tr(),
           textAlign: TextAlign.center,
           style: TextStyle(
             color: isSelected ? const Color(0xFFCB30E0) : Colors.black,
@@ -279,7 +247,7 @@ class _FakeCallScreenState extends State<FakeCallScreen> {
                   color: Colors.black54,
                 ),
                 items: ringtones
-                    .map((r) => DropdownMenuItem(value: r, child: Text(r)))
+                    .map((r) => DropdownMenuItem(value: r, child: Text(r.tr())))
                     .toList(),
                 onChanged: (v) {
                   setState(() => selectedRingtone = v!);
@@ -317,36 +285,43 @@ class _FakeCallScreenState extends State<FakeCallScreen> {
         borderRadius: BorderRadius.circular(18),
       ),
       child: ElevatedButton(
-        onPressed: () {
-          String imgPath = 'images/Woman.png';
-          if (selectedCaller == 'Dad') imgPath = 'images/Man.png';
-          if (selectedCaller == 'Police') imgPath = 'images/Police.png';
+        onPressed: () async {
+          try {
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setString('activity_log_fake_call_time', DateTime.now().toIso8601String());
+          } catch (e) {
+            debugPrint("Error saving fake call timestamp: $e");
+          }
 
-          if (selectedTime == 'Now') {
+          String imgPath = 'images/Woman.png';
+          if (selectedCaller == 'dad') imgPath = 'images/Man.png';
+          if (selectedCaller == 'police') imgPath = 'images/Police.png';
+
+          if (selectedTime == 'now') {
             Widget target;
-            if (selectedCaller == 'Mom') {
+            if (selectedCaller == 'mom') {
               target = IncomingFakeCallMom(
-                name: selectedCaller,
+                name: 'mom'.tr(),
                 imagePath: imgPath,
-                callerName: selectedCaller,
-                callTime: selectedTime,
-                ringtone: selectedRingtone,
+                callerName: 'mom'.tr(),
+                callTime: 'now'.tr(),
+                ringtone: selectedRingtone.tr(),
               );
-            } else if (selectedCaller == 'Dad') {
+            } else if (selectedCaller == 'dad') {
               target = IncomingFakeCallDad(
-                name: selectedCaller,
+                name: 'dad'.tr(),
                 imagePath: imgPath,
-                callerName: selectedCaller,
-                callTime: selectedTime,
-                ringtone: selectedRingtone,
+                callerName: 'dad'.tr(),
+                callTime: 'now'.tr(),
+                ringtone: selectedRingtone.tr(),
               );
             } else {
               target = IncomingFakeCallPolice(
-                name: selectedCaller,
+                name: 'police'.tr(),
                 imagePath: imgPath,
-                callerName: selectedCaller,
-                callTime: selectedTime,
-                ringtone: selectedRingtone,
+                callerName: 'police'.tr(),
+                callTime: 'now'.tr(),
+                ringtone: selectedRingtone.tr(),
               );
             }
             Navigator.push(
@@ -358,11 +333,11 @@ class _FakeCallScreenState extends State<FakeCallScreen> {
               context,
               MaterialPageRoute(
                 builder: (context) => FakeCallSuccessScreen(
-                  callTime: selectedTime,
-                  name: selectedCaller,
+                  callTime: selectedTime.tr(),
+                  name: selectedCaller.tr(),
                   imagePath: imgPath,
-                  callerName: selectedCaller,
-                  ringtone: selectedRingtone,
+                  callerName: selectedCaller.tr(),
+                  ringtone: selectedRingtone.tr(),
                 ),
               ),
             );
@@ -372,9 +347,9 @@ class _FakeCallScreenState extends State<FakeCallScreen> {
           backgroundColor: Colors.transparent,
           shadowColor: Colors.transparent,
         ),
-        child: const Text(
-          'schedule call',
-          style: TextStyle(
+        child: Text(
+          'schedule_call'.tr(),
+          style: const TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
             color: Colors.white,

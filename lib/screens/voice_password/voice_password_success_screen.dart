@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
+import 'package:vox_guard/screens/sos/home_screen.dart';
 import '../../config/colors.dart';
-import '../sos/home_screen.dart'; 
+import '../../services/background_monitor_service.dart';
+import '../../services/voice_monitor_service.dart';
 
 class VoicePasswordSuccessScreen extends StatelessWidget {
-  const VoicePasswordSuccessScreen({super.key});
+  final String? phrase;
+  const VoicePasswordSuccessScreen({super.key, this.phrase});
 
   @override
   Widget build(BuildContext context) {
@@ -57,7 +61,7 @@ class VoicePasswordSuccessScreen extends StatelessWidget {
                 height: 140,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: const Color(0xFFD546F3).withValues(alpha: 0.2),
+                  color: const Color(0xFFD546F3).withOpacity(0.2),
                 ),
                 child: const Center(
                   child: Icon(
@@ -76,9 +80,9 @@ class VoicePasswordSuccessScreen extends StatelessWidget {
                     Color(0XFFFBACB7),
                   ],
                 ).createShader(bounds),
-                child: const Text(
-                  'Voice Added',
-                  style: TextStyle(
+                child: Text(
+                  'voice_added'.tr(),
+                  style: const TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
@@ -105,10 +109,35 @@ class VoicePasswordSuccessScreen extends StatelessWidget {
                         ),
                       ),
                       child: ElevatedButton(
-                        onPressed: () {
+                        onPressed: () async {
+                          // ✅ Reload the new phrase into VoiceMonitorService
+                          await VoiceMonitorService().loadSettingsOnly();
+
+                          // ✅ Start background service so listening begins
+                          // immediately — even if the app is later closed.
+                          final bool isRunning =
+                              await BackgroundMonitorService().isRunning;
+                          if (!isRunning) {
+                            await BackgroundMonitorService()
+                                .startBackgroundMonitoring();
+                            debugPrint(
+                                '[VoiceSuccess] 🟢 Background monitor started after phrase registration.');
+                          } else {
+                            // Restart so the new phrase is picked up
+                            await BackgroundMonitorService()
+                                .stopBackgroundMonitoring();
+                            await BackgroundMonitorService()
+                                .startBackgroundMonitoring();
+                            debugPrint(
+                                '[VoiceSuccess] 🔄 Background monitor restarted with new phrase.');
+                          }
+
+                          // Capture context before async gap
+                          if (!context.mounted) return;
                           Navigator.pushAndRemoveUntil(
                             context,
-                            MaterialPageRoute(builder: (context) => const HomeScreen()),
+                            MaterialPageRoute(
+                                builder: (context) => const HomeScreen()),
                             (route) => false,
                           );
                         },
@@ -119,9 +148,9 @@ class VoicePasswordSuccessScreen extends StatelessWidget {
                             borderRadius: BorderRadius.circular(16),
                           ),
                         ),
-                        child: const Text(
-                          'Confirm',
-                          style: TextStyle(
+                        child: Text(
+                          'confirm'.tr(),
+                          style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w600,
                             color: Colors.white,
@@ -153,9 +182,9 @@ class VoicePasswordSuccessScreen extends StatelessWidget {
                           ),
                           elevation: 0,
                         ),
-                        child: const Text(
-                          'add another one',
-                          style: TextStyle(
+                        child: Text(
+                          'add_another_one'.tr(),
+                          style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w600,
                             color: Colors.black87,

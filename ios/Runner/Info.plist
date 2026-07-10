@@ -4,6 +4,14 @@
 <dict>
     <key>CADisableMinimumFrameDurationOnPhone</key>
     <true/>
+    <!-- Background modes for voice monitoring when screen is locked -->
+    <key>UIBackgroundModes</key>
+    <array>
+        <string>audio</string>
+        <string>location</string>
+        <string>voip</string>
+        <string>fetch</string>
+    </array>
     <key>CFBundleDevelopmentRegion</key>
     <string>$(DEVELOPMENT_LANGUAGE)</string>
     <key>CFBundleDisplayName</key>
@@ -34,7 +42,26 @@
     <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
     <string>VoxGuard needs your location for personal safety monitoring.</string>
     <key>NSMicrophoneUsageDescription</key>
-    <string>VoxGuard records audio evidence during an emergency SOS.</string>
+    <string>VoxGuard records audio evidence during an emergency SOS and for voice phrase monitoring.</string>
+    <key>NSCameraUsageDescription</key>
+    <string>نحتاج للوصول للكاميرا لالتقاط صور وفيديوهات للبلاغات.</string>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>نحتاج للوصول لمكتبة الصور لاختيار ملفات للبلاغات.</string>
+    <key>NSBluetoothAlwaysUsageDescription</key>
+    <string>VoxGuard needs Bluetooth to connect to your smartwatch for health monitoring.</string>
+    <key>NSBluetoothPeripheralUsageDescription</key>
+    <string>VoxGuard needs Bluetooth to connect to your smartwatch.</string>
+    <key>NSMotionUsageDescription</key>
+    <string>نحتاج للوصول لنشاط الحركة لاكتشاف السقوط أو الحوادث تلقائياً.</string>
+    <key>NSSpeechRecognitionUsageDescription</key>
+    <string>نحتاج لصلاحية التعرف على الكلام لتحويل صوتك إلى نص للتأكد من كلمة السر.</string>
+    <key>NSAppTransportSecurity</key>
+    <dict>
+      <key>NSAllowsArbitraryLoads</key>
+      <true/>
+      <key>NSAllowsLocalNetworking</key>
+      <true/>
+    </dict>
 
     <key>UIApplicationSceneManifest</key>
     <dict>
@@ -61,6 +88,8 @@
     <true/>
     <key>UILaunchStoryboardName</key>
     <string>LaunchScreen</string>
+    <key>UIMainStoryboardFile</key>
+    <string>Main</string>
     <key>UISupportedInterfaceOrientations</key>
     <array>
         <string>UIInterfaceOrientationPortrait</string>
@@ -74,5 +103,37 @@
         <string>UIInterfaceOrientationLandscapeLeft</string>
         <string>UIInterfaceOrientationLandscapeRight</string>
     </array>
+
+    <!-- Facebook Login Configuration -->
+    <key>FacebookAppID</key>
+    <string>YOUR_FACEBOOK_APP_ID</string>
+    <key>FacebookClientToken</key>
+    <string>YOUR_FACEBOOK_CLIENT_TOKEN</string>
+    <key>FacebookDisplayName</key>
+    <string>Vox Guard</string>
+    <key>LSApplicationQueriesSchemes</key>
+    <array>
+        <string>fbapi</string>
+        <string>fb-messenger-share-api</string>
+        <string>fbauth2</string>
+        <string>fbshareextension</string>
+    </array>
+
+    <!-- Custom URL scheme for bringing app to foreground from background -->
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleTypeRole</key>
+            <string>Editor</string>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>com.googleusercontent.apps.937671622047-1h87v3mvu4k9i32gc2ouegneu4mpiqf3</string>
+                <string>fbYOUR_FACEBOOK_APP_ID</string>
+                <string>voxguard</string>
+            </array>
+        </dict>
+    </array>
+    <key>GIDClientID</key>
+    <string>937671622047-1h87v3mvu4k9i32gc2ouegneu4mpiqf3.apps.googleusercontent.com</string>
 </dict>
 </plist>

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 class CustomTextField extends StatefulWidget {
   final String label;
@@ -23,8 +24,9 @@ class _CustomTextFieldState extends State<CustomTextField> {
 
   @override
   Widget build(BuildContext context) {
+    bool isArabic = context.locale.languageCode == 'ar';
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: isArabic ? CrossAxisAlignment.end : CrossAxisAlignment.start,
       children: [
 
         Text(
@@ -38,15 +40,16 @@ class _CustomTextFieldState extends State<CustomTextField> {
         const SizedBox(height: 8),
 
         TextField(
-          controller: widget.controller,   
+          controller: widget.controller,
+          textAlign: isArabic ? TextAlign.right : TextAlign.left,
           obscureText: widget.isPassword ? _obscureText : false,
           obscuringCharacter: '*',
 
          decoration: InputDecoration(
   hintText: widget.isPassword ? "*******" : widget.hintText,
-  hintStyle: const TextStyle(
-    color: Colors.grey,
-    fontSize: 16,
+  hintStyle: TextStyle(
+    color: Colors.grey.shade400,
+    fontSize: 13,
   ),
 
   suffixIcon: widget.isPassword

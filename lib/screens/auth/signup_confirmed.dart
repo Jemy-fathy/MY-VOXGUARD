@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../auth/how_screen.dart';
 import '../../config/colors.dart';
 import '../../custom_widgets/custom_button.dart';
 import '../../custom_widgets/logo_header.dart';
-
 
 class SignUpConfirmedScreen extends StatelessWidget {
   const SignUpConfirmedScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    bool isArabic = context.locale.languageCode == 'ar';
     return Scaffold(
       body: Container(
         width: double.infinity,
@@ -19,21 +20,19 @@ class SignUpConfirmedScreen extends StatelessWidget {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-             AppColors.bgBlueLight,
-             AppColors.bgPurpleLight,
-             Colors.white, 
+              AppColors.bgBlueLight,
+              AppColors.bgPurpleLight,
+              Colors.white,
             ],
-          stops: [0.0, 0.3, 0.7],
+            stops: [0.0, 0.3, 0.7],
           ),
         ),
         child: SafeArea(
           child: Column(
             children: [
-              const SizedBox(height: 40),
               const AppLogoHeader(),
+              const SizedBox(height: 40),
               const Spacer(),
-
-
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 30),
                 child: Container(
@@ -51,37 +50,39 @@ class SignUpConfirmedScreen extends StatelessWidget {
                   ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-
-                      IconButton(
-                        onPressed: () => Navigator.pop(context),
-                        icon: const Icon(Icons.arrow_back, color: Colors.black87),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
+                      Align(
+                        alignment: isArabic ? Alignment.centerRight : Alignment.centerLeft,
+                        child: IconButton(
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          onPressed: () => Navigator.pop(context),
+                          icon: const Icon(
+                            Icons.arrow_back, 
+                            color: Colors.black, 
+                            size: 28
+                          ),
+                        ),
                       ),
-                      
-
+                      const SizedBox(height: 10),
                       Center(
                         child: ShaderMask(
                           shaderCallback: (bounds) => const LinearGradient(
-                            colors: AppColors.logoGradient, 
+                            colors: AppColors.logoGradient,
                           ).createShader(bounds),
-                          child: const Text(
-                            "Sign Up confirmed",
-                            style: TextStyle(
+                          child: Text(
+                            "signup_confirmed".tr(),
+                            style: const TextStyle(
                               fontSize: 24,
                               fontWeight: FontWeight.bold,
-                              color: Colors.white, 
+                              color: Colors.white,
                             ),
                           ),
                         ),
                       ),
-
-                      const SizedBox(height: 22),
-
+                      const SizedBox(height: 30),
                       CustomButton(
-                        text: "start",
+                        text: "start".tr(),
                         onPressed: () {
                           Navigator.pushAndRemoveUntil(
                             context,
@@ -94,7 +95,6 @@ class SignUpConfirmedScreen extends StatelessWidget {
                   ),
                 ),
               ),
-              
               const Spacer(flex: 2),
             ],
           ),

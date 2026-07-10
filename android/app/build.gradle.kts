@@ -13,7 +13,6 @@ android {
     compileOptions {
         // تفعيل الـ Desugaring بشكل رسمي لتوافق المكاتب الحديثة
         isCoreLibraryDesugaringEnabled = true
-        
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -34,6 +33,7 @@ android {
 
     buildTypes {
         release {
+            // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
         }
     }

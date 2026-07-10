@@ -43,3 +43,10 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# AI Models & Databases
+/Ai/wavlm_model/
+/wavlm_model/
+*.db-journal
+*.db
+/safe/public/storage/recordings/

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../auth/password/update_password_screen.dart';
@@ -10,7 +11,8 @@ import '/screens/sos/ai_monitor.dart' show kEmotionDetectionKey;
 import 'profile_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({super.key});
+  final VoidCallback? onBackPressed;
+  const SettingsScreen({super.key, this.onBackPressed});
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -29,6 +31,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void initState() {
     super.initState();
     _loadEmotionDetection();
+    _loadPanicButtonStatus();
+  }
+
+  Future<void> _loadPanicButtonStatus() async {
+    final prefs = await SharedPreferences.getInstance();
+    final value = prefs.getBool('panic_button_enabled') ?? true;
+    if (mounted) {
+      setState(() => panicButtonStatus = value);
+    }
+  }
+
+  Future<void> _setPanicButtonStatus(bool value) async {
+    setState(() => panicButtonStatus = value);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('panic_button_enabled', value);
   }
 
 Future<void> _loadEmotionDetection() async {
@@ -80,12 +97,18 @@ Future<void> _setEmotionDetection(bool value) async {
                         ),
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(),
-                        onPressed: () => Navigator.pop(context),
+                        onPressed: () {
+                          if (widget.onBackPressed != null) {
+                            widget.onBackPressed!();
+                          } else {
+                            Navigator.pop(context);
+                          }
+                        },
                       ),
                       const SizedBox(width: 8),
-                      const Text(
-                        'Settings',
-                        style: TextStyle(
+                      Text(
+                        'settings'.tr(),
+                        style: const TextStyle(
                           color: Colors.white,
                           fontSize: 22,
                           fontWeight: FontWeight.bold,
@@ -111,10 +134,10 @@ Future<void> _setEmotionDetection(bool value) async {
                     ),
                     child: Column(
                       children: [
-                        _buildSectionTitle('Account'),
+                        _buildSectionTitle('account'.tr()),
                         _buildSettingTile(
                           null,
-                          'Profile',
+                          'profile'.tr(),
                           imageAsset: 'images/profile.png',
                           hasArrow: true,
                           onTap: () => Navigator.push(
@@ -126,7 +149,7 @@ Future<void> _setEmotionDetection(bool value) async {
                         ),
                         _buildSettingTile(
                           null,
-                          'Voice Password',
+                          'voice_password_toggle'.tr(),
                           imageAsset: 'images/voice copy.png',
                           hasSwitch: true,
                           currentValue: voicePasswordStatus,
@@ -136,7 +159,7 @@ Future<void> _setEmotionDetection(bool value) async {
                         ),
                         _buildSettingTile(
                           Icons.watch_outlined,
-                          'Wearable Devices',
+                          'wearable_devices'.tr(),
                           hasArrow: true,
                           onTap: () => Navigator.push(
                             context,
@@ -147,7 +170,7 @@ Future<void> _setEmotionDetection(bool value) async {
                         ),
                         _buildSettingTile(
                           null,
-                          'Change Password',
+                          'change_password'.tr(),
                           imageAsset: 'images/change.png',
                           hasArrow: true,
                           onTap: () => Navigator.push(
@@ -159,7 +182,7 @@ Future<void> _setEmotionDetection(bool value) async {
                         ),
                         _buildSettingTile(
                           null,
-                          'Fake call',
+                          'fake_call'.tr(),
                           imageAsset: 'images/fack.png',
                           hasSwitch: true,
                           currentValue: fakeCallStatus,
@@ -169,15 +192,15 @@ Future<void> _setEmotionDetection(bool value) async {
                         ),
                         _buildSettingTile(
                           null,
-                          'Panic button',
+                          'panic_button'.tr(),
                           imageAsset: 'images/panic.png',
                           hasSwitch: true,
                           currentValue: panicButtonStatus,
-                          onChanged: (v) => setState(() => panicButtonStatus = v),
+                          onChanged: _setPanicButtonStatus,
                         ),
                         _buildSettingTile(
                           Icons.emoji_emotions_outlined,
-                          'Emotion Detection',
+                          'emotion'.tr(),
                           hasSwitch: true,
                           currentValue: emotionDetectionStatus,
                           onChanged: _setEmotionDetection,
@@ -187,10 +210,10 @@ Future<void> _setEmotionDetection(bool value) async {
                           height: 40,
                           color: Color(0xFFF0F0F0),
                         ),
-                        _buildSectionTitle('General'),
+                        _buildSectionTitle('general'.tr()),
                         _buildSettingTile(
                           null,
-                          'Notifications',
+                          'notifications'.tr(),
                           imageAsset: 'images/Notification.png',
                           hasSwitch: true,
                           currentValue: notificationStatus,
@@ -198,7 +221,7 @@ Future<void> _setEmotionDetection(bool value) async {
                         ),
                         _buildSettingTile(
                           null,
-                          'Language',
+                          'language'.tr(),
                           imageAsset: 'images/Language.png',
                           hasArrow: true,
                           onTap: () => Navigator.push(
@@ -296,9 +319,9 @@ Future<void> _setEmotionDetection(bool value) async {
             builder: (context) => const DeleteAccountScreen(),
           ),
         ),
-        child: const Text(
-          'Log out',
-          style: TextStyle(
+        child: Text(
+          'logout'.tr(),
+          style: const TextStyle(
             color: Colors.white,
             fontSize: 18,
             fontWeight: FontWeight.bold,

@@ -1,11 +1,17 @@
 import 'package:flutter/material.dart';
+import 'dart:ui' as ui;
+import 'dart:convert';
+import 'dart:io';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../trust_contacts/add_contact_screen.dart'; 
+import '../trust_contacts/add_contact_screen.dart';
 import '../../custom_widgets/custom_button.dart';
+import '../../config/api_config.dart';
 
 class TrustedContactsScreen extends StatefulWidget {
-  const TrustedContactsScreen({super.key});
+  final VoidCallback? onBackPressed;
+  const TrustedContactsScreen({super.key, this.onBackPressed});
 
   @override
   State<TrustedContactsScreen> createState() => _TrustedContactsScreenState();
@@ -14,87 +20,136 @@ class TrustedContactsScreen extends StatefulWidget {
 class _TrustedContactsScreenState extends State<TrustedContactsScreen> {
   List<dynamic> contacts = [];
   bool isLoading = true;
- 
-  final String baseUrl = "http://192.168.1.191:8000";
 
   @override
   void initState() {
     super.initState();
+    _loadLocalContacts();
     _fetchContacts();
+  }
+
+  Future<void> _loadLocalContacts() async {
+    final prefs = await SharedPreferences.getInstance();
+    final String? localData = prefs.getString('local_trusted_contacts');
+    if (localData != null) {
+      try {
+        final List<dynamic> decoded = jsonDecode(localData);
+        if (mounted) {
+          setState(() {
+            contacts = decoded;
+            isLoading = false;
+          });
+        }
+      } catch (e) {
+        debugPrint("Error loading local contacts: $e");
+      }
+    }
   }
 
   Future<void> _fetchContacts() async {
     if (!mounted) return;
-    setState(() => isLoading = true);
+    if (contacts.isEmpty) {
+      setState(() => isLoading = true);
+    }
+
     try {
       final prefs = await SharedPreferences.getInstance();
-      final String? token = prefs.getString('auth_token');
-      
+      final String? token = prefs.getString('token') ?? prefs.getString('auth_token');
+
       var response = await Dio().get(
-        "$baseUrl/api/trusted-contacts/index",
-        options: Options(headers: {"Authorization": "Bearer $token"}),
+        "${ApiConfig.baseUrl}/trusted-contacts",
+        options: Options(
+          headers: {
+            "Accept": "application/json",
+            "Authorization": "Bearer $token",
+          },
+        ),
       );
-      
+
       if (mounted) {
         setState(() {
-          contacts = response.data['contacts'] ?? [];
+          if (response.data is Map && response.data['contacts'] != null) {
+            contacts = response.data['contacts'];
+          } else {
+            contacts = [];
+          }
           isLoading = false;
         });
+        await prefs.setString('local_trusted_contacts', jsonEncode(contacts));
       }
     } catch (e) {
-      if (mounted) setState(() => isLoading = false);
-      debugPrint("Error Fetching: $e");
+      await _loadLocalContacts();
     }
   }
 
-  Future<void> _deleteContact(dynamic id, int index) async {
+  Future<void> _deleteContact(dynamic id) async {
+    // Delete locally first so UI updates instantly
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      contacts.removeWhere((c) => c['id'] == id);
+    });
+    await prefs.setString('local_trusted_contacts', jsonEncode(contacts));
+
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final String? token = prefs.getString('auth_token');
-      
-      await Dio().delete(
-        "$baseUrl/api/trusted-contacts/${id.toString()}",
-        options: Options(headers: {"Authorization": "Bearer $token"}),
+      final String? token = prefs.getString('token') ?? prefs.getString('auth_token');
+
+      var response = await Dio().delete(
+        "${ApiConfig.baseUrl}/trusted-contacts/$id",
+        options: Options(
+          headers: {
+            "Accept": "application/json",
+            "Authorization": "Bearer $token",
+          },
+        ),
       );
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Contact removed successfully"), backgroundColor: Colors.green),
-        );
+
+      if (response.statusCode == 200) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Trusted contact has been removed successfully'.tr()),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+        _fetchContacts();
+      } else {
+        throw Exception("Delete rejected by backend");
       }
     } catch (e) {
-      _fetchContacts();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Failed to delete contact"), backgroundColor: Colors.orange),
+          SnackBar(
+            content: Text('Contact deleted locally. Server update pending.'.tr()),
+            backgroundColor: Colors.orange,
+          ),
         );
       }
-      debugPrint("Error Deleting: $e");
     }
   }
 
-  void _showDeleteConfirmation(dynamic id, int index) {
+  void _confirmDeleteContact(dynamic id) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text("Confirm Delete"),
-        content: const Text("Are you sure you want to delete this contact?"),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Cancel", style: TextStyle(color: Colors.grey)),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              setState(() => contacts.removeAt(index)); 
-              _deleteContact(id, index); 
-            },
-            child: const Text("Delete", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text("confirm".tr()),
+          content: Text("delete_contact_confirm".tr()),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text("no".tr()),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _deleteContact(id);
+              },
+              child: Text("yes".tr(), style: const TextStyle(color: Colors.red)),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -104,11 +159,14 @@ class _TrustedContactsScreenState extends State<TrustedContactsScreen> {
       backgroundColor: Colors.white,
       body: Stack(
         children: [
+          
           Container(
             height: 200,
             width: double.infinity,
             decoration: const BoxDecoration(
-              gradient: LinearGradient(colors: [Color(0xFF8E9EFE), Color(0xFFE040FB)]),
+              gradient: LinearGradient(
+                colors: [Color(0xFF8E9EFE), Color(0xFFE040FB)],
+              ),
             ),
           ),
           Column(
@@ -118,10 +176,7 @@ class _TrustedContactsScreenState extends State<TrustedContactsScreen> {
                 child: Container(
                   decoration: const BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(30), 
-                      topRight: Radius.circular(30)
-                    ),
+                    borderRadius: BorderRadius.only(topLeft: Radius.circular(30), topRight: Radius.circular(30)),
                   ),
                   padding: const EdgeInsets.all(20),
                   child: Column(
@@ -130,26 +185,24 @@ class _TrustedContactsScreenState extends State<TrustedContactsScreen> {
                         child: isLoading
                             ? const Center(child: CircularProgressIndicator())
                             : contacts.isEmpty
-                                ? const Center(child: Text("No contacts added yet"))
+                                ? const SizedBox.shrink()
                                 : ListView.builder(
-                                    padding: EdgeInsets.zero,
                                     itemCount: contacts.length,
-                                    itemBuilder: (context, index) {
-                                      return _buildContactCard(contacts[index], index);
-                                    },
+                                    itemBuilder: (context, index) => _buildContactCard(contacts[index]),
                                   ),
                       ),
-                      const SizedBox(height: 10),
                       CustomButton(
-                        text: "Add new",
+                        text: "add_new".tr(),
                         onPressed: () async {
                           bool? refresh = await Navigator.push(
-                            context, 
-                            MaterialPageRoute(builder: (context) => const AddContactScreen())
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => AddContactScreen(
+                                onBackPressed: widget.onBackPressed,
+                              ),
+                            ),
                           );
-                          if (refresh == true || !mounted) {
-                            _fetchContacts();
-                          }
+                          if (refresh == true) _fetchContacts();
                         },
                       ),
                     ],
@@ -164,127 +217,171 @@ class _TrustedContactsScreenState extends State<TrustedContactsScreen> {
   }
 
   Widget _buildHeader() {
+    bool isAr = context.locale.languageCode == 'ar';
     return Container(
       height: 140,
-      padding: const EdgeInsets.only(top: 60, left: 16),
+      padding: const EdgeInsets.only(top: 60, left: 16, right: 16),
       child: Row(
+        textDirection: isAr ? ui.TextDirection.rtl : ui.TextDirection.ltr,
         children: [
           IconButton(
-            icon: const Icon(Icons.chevron_left, color: Colors.white, size: 30), 
-            onPressed: () => Navigator.pop(context)
-          ),
-          const Text(
-            'Trusted Contacts', 
-            style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildContactCard(dynamic contact, int index) {
-    String imageUrl = contact['image'] ?? "";
-    if (imageUrl.isNotEmpty && !imageUrl.startsWith('http')) {
-      imageUrl = "$baseUrl$imageUrl";
-    }
-
-    String name = contact['name'] ?? "${contact['first_name'] ?? ''} ${contact['last_name'] ?? ''}".trim();
-    if (name.isEmpty) name = "Unknown Name";
-
-    String status = (contact['status'] ?? "offline").toLowerCase();
-    Color statusColor = status == "online" ? Colors.green : (status == "nearby" ? Colors.purple : Colors.grey);
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.grey.shade300),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05), 
-            blurRadius: 10, 
-            offset: const Offset(0, 4)
-          )
-        ],
-      ),
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          Stack(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: imageUrl.isNotEmpty
-                    ? Image.network(
-                        imageUrl, 
-                        width: 60, height: 60, 
-                        fit: BoxFit.cover, 
-                        errorBuilder: (c, e, s) => _buildPlaceholder()
-                      )
-                    : _buildPlaceholder(),
-              ),
-              Positioned(
-                right: 2, bottom: 2,
-                child: Container(
-                  width: 12, height: 12, 
-                  decoration: BoxDecoration(
-                    color: statusColor, 
-                    shape: BoxShape.circle, 
-                    border: Border.all(color: Colors.white, width: 2)
-                  )
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name, 
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.black)
-                ),
-                Text(
-                  contact['relation'] ?? "Relative", 
-                  style: TextStyle(color: Colors.grey.shade600, fontSize: 14)
-                ),
-                Text(
-                  contact['phone'] ?? "No Phone", 
-                  style: TextStyle(color: Colors.grey.shade600, fontSize: 14)
-                ),
-              ],
+            icon: const Icon(
+              Icons.arrow_back_ios_new_rounded,
+              color: Colors.white,
+              size: 24,
             ),
+            onPressed: widget.onBackPressed ?? () => Navigator.pop(context),
           ),
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert, color: Colors.grey),
-            onSelected: (value) {
-              if (value == 'delete') {
-                _showDeleteConfirmation(contact['id'], index);
-              }
-            },
-            itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: 'delete',
-                child: Row(
-                  children: [
-                    Icon(Icons.delete_outline, color: Colors.red),
-                    SizedBox(width: 8),
-                    Text("Delete", style: TextStyle(color: Colors.red)),
-                  ],
-                ),
-              ),
-            ],
-          ),
+          const SizedBox(width: 8),
+          Text('trusted_contacts_title'.tr(), style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
         ],
       ),
     );
   }
 
-  Widget _buildPlaceholder() => Container(
-    width: 60, height: 60, 
-    color: Colors.grey[200], 
-    child: const Icon(Icons.person, color: Colors.grey)
+  String _localizeDigits(String input) {
+    if (context.locale.languageCode != 'ar') return input;
+    const english = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+    const arabic = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+    for (int i = 0; i < english.length; i++) {
+      input = input.replaceAll(english[i], arabic[i]);
+    }
+    return input;
+  }
+
+  Widget _buildContactCard(dynamic contact) {
+  String imageUrl = contact['image'] ?? "";
+  String name = "${contact['first_name'] ?? ''} ${contact['last_name'] ?? ''}".trim();
+  if (name.isEmpty) name = contact['name'] ?? "no_name".tr();
+  
+  String statusKey = (contact['status'] ?? "offline").toLowerCase();
+  
+  Color statusColor = Colors.grey;
+  if (statusKey == "online") statusColor = Colors.green;
+  if (statusKey == "nearby") statusColor = Colors.purple;
+
+  return Container(
+    margin: const EdgeInsets.only(bottom: 16),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: Colors.grey.shade300), 
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.05),
+          blurRadius: 10,
+          offset: const Offset(0, 4),
+        ),
+      ],
+    ),
+    padding: const EdgeInsets.all(16),
+    child: Row(
+      children: [
+
+        Stack(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: imageUrl.isNotEmpty
+                  ? (imageUrl.startsWith('http')
+                      ? Image.network(
+                          imageUrl,
+                          width: 60,
+                          height: 60,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => _buildPlaceholder(),
+                        )
+                      : Image.file(
+                          File(imageUrl),
+                          width: 60,
+                          height: 60,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => _buildPlaceholder(),
+                        ))
+                  : _buildPlaceholder(),
+            ),
+
+            Positioned(
+              right: 2,
+              bottom: 2,
+              child: Container(
+                width: 12,
+                height: 12,
+                decoration: BoxDecoration(
+                  color: statusColor,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 2),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(width: 16),
+        
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                name,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                  color: Colors.black,
+                ),
+              ),
+              Text(
+                (contact['relation'] ?? "relative").toString().tr(),
+                style: TextStyle(
+                  color: Colors.grey.shade600,
+                  fontSize: 14,
+                ),
+              ),
+              Text(
+                _localizeDigits(contact['phone'] ?? "no_phone".tr()),
+                style: TextStyle(
+                  color: Colors.grey.shade600,
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+        ),
+        
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              statusKey.tr(),
+              style: TextStyle(
+                color: statusColor,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+            const SizedBox(height: 8),
+            GestureDetector(
+              onTap: () => _confirmDeleteContact(contact['id']),
+              child: const Icon(
+                Icons.delete_outline,
+                color: Colors.redAccent,
+                size: 24,
+              ),
+            ),
+          ],
+        ),
+      ],
+    ),
   );
+}
+
+Widget _buildPlaceholder() {
+  return Container(
+    width: 60,
+    height: 60,
+    color: Colors.grey[200],
+    child: const Icon(Icons.person, color: Colors.grey),
+  );
+}
 }

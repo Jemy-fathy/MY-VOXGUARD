@@ -1,7 +1,82 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
+import 'dart:ui' as ui;
+import 'package:shared_preferences/shared_preferences.dart';
 
-class ActivityLogScreen extends StatelessWidget {
+class ActivityLogScreen extends StatefulWidget {
   const ActivityLogScreen({super.key});
+
+  @override
+  State<ActivityLogScreen> createState() => _ActivityLogScreenState();
+}
+
+class _ActivityLogScreenState extends State<ActivityLogScreen> {
+  String? _sosTime;
+  String? _tripTime;
+  String? _reportTime;
+  String? _locationTime;
+  String? _fakeCallTime;
+  String? _wearableTime;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTimes();
+  }
+
+  Future<void> _loadTimes() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      setState(() {
+        _sosTime = prefs.getString('activity_log_sos_time');
+        _tripTime = prefs.getString('activity_log_trip_time');
+        _reportTime = prefs.getString('activity_log_report_time');
+        _locationTime = prefs.getString('activity_log_location_time');
+        _fakeCallTime = prefs.getString('activity_log_fake_call_time');
+        _wearableTime = prefs.getString('activity_log_wearable_time');
+      });
+    } catch (e) {
+      debugPrint("Error loading activity log times: $e");
+    }
+  }
+
+  String _formatLogTime(String? timestampIso, String fallback) {
+    if (timestampIso == null || timestampIso.isEmpty) {
+      return fallback;
+    }
+    try {
+      final dateTime = DateTime.parse(timestampIso).toLocal();
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      final yesterday = today.subtract(const Duration(days: 1));
+      final itemDate = DateTime(dateTime.year, dateTime.month, dateTime.day);
+
+      final String langCode = context.locale.languageCode;
+
+      if (itemDate == today) {
+        if (langCode == 'ar') {
+          return "اليوم ، ${DateFormat('h:mm a', 'ar').format(dateTime)}";
+        } else {
+          return "Today , ${DateFormat('h:mm a', 'en').format(dateTime)}";
+        }
+      } else if (itemDate == yesterday) {
+        if (langCode == 'ar') {
+          return "أمس الساعة ${DateFormat('h:mm a', 'ar').format(dateTime)}";
+        } else {
+          return "Yesterday at ${DateFormat('h:mm a', 'en').format(dateTime)}";
+        }
+      } else {
+        if (langCode == 'ar') {
+          return "${DateFormat('d MMMM yyyy', 'ar').format(dateTime)} الساعة ${DateFormat('h:mm a', 'ar').format(dateTime)}";
+        } else {
+          return "${DateFormat('MMMM d, yyyy', 'en').format(dateTime)} at ${DateFormat('h:mm a', 'en').format(dateTime)}";
+        }
+      }
+    } catch (e) {
+      debugPrint("Error formatting date: $e");
+      return fallback;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -24,17 +99,22 @@ class ActivityLogScreen extends StatelessWidget {
             children: [
               Container(
                 height: 140,
-                padding: const EdgeInsets.only(top: 50, left: 10),
+                padding: const EdgeInsets.only(top: 50, left: 10, right: 10),
                 child: Row(
+                  textDirection: context.locale.languageCode == 'ar' ? ui.TextDirection.rtl : ui.TextDirection.ltr,
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.arrow_back_ios_new,
-                          color: Colors.white, size: 22),
+                      icon: const Icon(
+                        Icons.arrow_back_ios_new_rounded,
+                        color: Colors.white, 
+                        size: 22
+                      ),
                       onPressed: () => Navigator.pop(context),
                     ),
-                    const Text(
-                      'Activity log',
-                      style: TextStyle(
+                    const SizedBox(width: 8),
+                    Text(
+                      'active_log'.tr(),
+                      style: const TextStyle(
                           color: Colors.white,
                           fontSize: 24,
                           fontWeight: FontWeight.bold),
@@ -64,42 +144,40 @@ class ActivityLogScreen extends StatelessWidget {
                     children: [
                       _buildUnifiedCard(
                         imagePath: 'images/sos.png',
-                        title: "SOS Event Triggered",
-                        time: "Today , 9:41 AM",
-                        description:
-                            "Alert sent to emergency contacts and authorities.\nlocation : 123 main St.Anytown",
+                        title: "sos_triggered".tr(),
+                        time: _formatLogTime(_sosTime, "today_time".tr()),
+                        description: "sos_description".tr(),
                         isSpecial: true,
                       ),
                       _buildUnifiedCard(
                         imagePath: 'images/Trip.png',
-                        title: "Trip Started",
-                        time: "yesterday at 8:30 PM",
-                        description: "From: Home , to : city library",
+                        title: "trip_started".tr(),
+                        time: _formatLogTime(_tripTime, "yesterday_time".tr()),
+                        description: "trip_description".tr(),
                       ),
                       _buildUnifiedCard(
                         imagePath: 'images/Report copy.png',
-                        title: "Report Submitted",
-                        time: "July 18, 2024 at 8:30 PM",
-                        description: "Incident report regarding harassment",
+                        title: "report_submitted".tr(),
+                        time: _formatLogTime(_reportTime, "july_date".tr()),
+                        description: "report_description".tr(),
                       ),
                       _buildUnifiedCard(
                         icon: Icons.location_on_outlined,
-                        title: "Location Shared",
-                        time: "July 18, 2024 at 8:30 PM",
-                        description: "Live location shared with shahd zahran",
+                        title: "location_shared_log".tr(),
+                        time: _formatLogTime(_locationTime, "july_date".tr()),
+                        description: "location_shared_description".tr(),
                       ),
                       _buildUnifiedCard(
                         imagePath: 'images/call.png',
-                        title: "Fake Call Initiated",
-                        time: "July 18, 2024 at 8:30 PM",
-                        description:
-                            "Scheduled fake call received successfully",
+                        title: "fake_call_log".tr(),
+                        time: _formatLogTime(_fakeCallTime, "july_date".tr()),
+                        description: "fake_call_description".tr(),
                       ),
                       _buildUnifiedCard(
                         icon: Icons.watch_outlined,
-                        title: "Wearable Trigger",
-                        time: "July 18, 2024 at 8:30 PM",
-                        description: "High heart-rate detected (145 bpm)",
+                        title: "wearable_trigger".tr(),
+                        time: _formatLogTime(_wearableTime, "july_date".tr()),
+                        description: "heart_rate_log".tr(),
                       ),
                     ],
                   ),

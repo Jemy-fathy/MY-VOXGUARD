@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../../config/colors.dart';
 import '../../custom_widgets/custom_button.dart';
 import '../../custom_widgets/logo_header.dart';
@@ -16,7 +17,11 @@ class HowWeKeepSafeScreen extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [AppColors.bgBlueLight, AppColors.bgPurpleLight, Colors.white],
+            colors: [
+              AppColors.bgBlueLight,
+              AppColors.bgPurpleLight,
+              Colors.white,
+            ],
             stops: const [0.0, 0.3, 0.7],
           ),
         ),
@@ -26,50 +31,57 @@ class HowWeKeepSafeScreen extends StatelessWidget {
               const SizedBox(height: 20),
               const AppLogoHeader(),
               const SizedBox(height: 15),
-              _buildStepper(0), 
+              _buildStepper(0),
               const SizedBox(height: 25),
               ShaderMask(
                 shaderCallback: (bounds) => const LinearGradient(
                   colors: AppColors.logoGradient,
                 ).createShader(bounds),
-                child: const Text(
-                  "How we keep you safe ?",
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+                child: Text(
+                  "how_we_keep_safe".tr(),
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 46),
               Expanded(
                 child: ListView(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  children: const [
+                  children: [
                     FeatureInfoCard(
-                      title: "SOS Alert", 
-                      description: "Instantly send an emergency alert to your trusted contactes with your location.", 
-                      icon: Icons.sos
+                      title: "sos_alert".tr(),
+                      description: "sos_alert_desc".tr(),
+                      icon: Icons.sos,
                     ),
                     FeatureInfoCard(
-                      title: "Voice Password", 
-                      description: "Activate alerts hands-free by speaking your secret phrase, even from a distance.", 
-                      icon: Icons.mic
+                      title: "voice_password".tr(),
+                      description: "voice_password_alert_desc".tr(),
+                      icon: Icons.mic,
                     ),
                     FeatureInfoCard(
-                      title: "Fake Call", 
-                      description: "Discreetly simulate an incoming phone call to create a diversion and exit unsafe situations.", 
-                      icon: Icons.phone
+                      title: "fake_call".tr(),
+                      description: "fake_call_desc".tr(),
+                      icon: Icons.phone,
                     ),
                     FeatureInfoCard(
-                      title: "Trip Tracking", 
-                      description: "Share your live journey with friends or family so they know you've arrived safely.", 
-                      icon: Icons.location_on
+                      title: "trip_tracking".tr(),
+                      description: "trip_tracking_desc".tr(),
+                      icon: Icons.location_on,
                     ),
                   ],
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 20,
+                ),
                 child: CustomButton(
-                  text: "Continue", 
-                  onPressed: () => Navigator.pushNamed(context, '/permissions')
+                  text: "continue".tr(),
+                  onPressed: () => Navigator.pushNamed(context, '/permissions'),
                 ),
               ),
             ],
@@ -82,15 +94,20 @@ class HowWeKeepSafeScreen extends StatelessWidget {
   Widget _buildStepper(int activeStep) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
-      children: List.generate(4, (index) => Container(
-        margin: const EdgeInsets.symmetric(horizontal: 4),
-        width: index == activeStep ? 9.7 : 9.7,
-        height: 10,
-        decoration: BoxDecoration(
-          color: index == activeStep ? const Color(0xFFCB30E0) : Colors.grey.shade300,
-          borderRadius: BorderRadius.circular(5),
+      children: List.generate(
+        4,
+        (index) => Container(
+          margin: const EdgeInsets.symmetric(horizontal: 4),
+          width: index == activeStep ? 9.7 : 9.7,
+          height: 10,
+          decoration: BoxDecoration(
+            color: index == activeStep
+                ? const Color(0xFFCB30E0)
+                : Colors.grey.shade300,
+            borderRadius: BorderRadius.circular(5),
+          ),
         ),
-      )),
+      ),
     );
   }
 }

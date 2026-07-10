@@ -1,15 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
+import 'dart:io';
 
 class ProfileHeader extends StatelessWidget {
   final String imagePath;
+  final String? imageUrl;
+  final String? localImagePath;
+  final String? token;
   final VoidCallback onBack;
   final VoidCallback onEdit;
+  final VoidCallback? onAvatarEdit;
 
   const ProfileHeader({
     super.key,
     required this.imagePath,
+    this.imageUrl,
+    this.localImagePath,
+    this.token,
     required this.onBack,
     required this.onEdit,
+    this.onAvatarEdit,
   });
 
   @override
@@ -37,13 +47,15 @@ class ProfileHeader extends StatelessWidget {
                 Row(
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.arrow_back_ios,
-                          color: Colors.white, size: 20),
+                      icon: Icon(Icons.arrow_back_ios_new_rounded,
+                        color: Colors.white, 
+                        size: 20,
+                      ),
                       onPressed: onBack,
                     ),
                     Center(
-                      child: const Text('profile',
-                          style: TextStyle(
+                      child: Text('profile'.tr(),
+                          style: const TextStyle(
                               color: Colors.white,
                               fontSize: 20,
                               fontWeight: FontWeight.bold)),
@@ -85,16 +97,28 @@ class ProfileHeader extends StatelessWidget {
                     ]),
                 child: CircleAvatar(
                     radius: 65,
-                    backgroundImage: AssetImage(imagePath),
+                    backgroundImage: localImagePath != null
+                        ? FileImage(File(localImagePath!))
+                        : imageUrl != null
+                            ? NetworkImage(
+                                imageUrl!,
+                                headers: token != null
+                                    ? {'Authorization': 'Bearer $token'}
+                                    : {},
+                              ) as ImageProvider
+                            : AssetImage(imagePath),
                     backgroundColor: Colors.grey[200]),
               ),
-              Container(
-                margin: const EdgeInsets.only(right: 8, bottom: 8),
-                decoration: const BoxDecoration(
-                    color: Color(0xFF333333), shape: BoxShape.circle),
-                child: const Padding(
-                  padding: EdgeInsets.all(8.0),
-                  child: Icon(Icons.edit, color: Colors.white, size: 20),
+              GestureDetector(
+                onTap: onAvatarEdit,
+                child: Container(
+                  margin: const EdgeInsets.only(right: 8, bottom: 8),
+                  decoration: const BoxDecoration(
+                      color: Color(0xFF333333), shape: BoxShape.circle),
+                  child: const Padding(
+                    padding: EdgeInsets.all(8.0),
+                    child: Icon(Icons.edit, color: Colors.white, size: 20),
+                  ),
                 ),
               ),
             ],

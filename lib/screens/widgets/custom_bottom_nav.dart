@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../sos/home_screen.dart';
+import 'package:vox_guard/screens/sos/home_screen.dart';
 import '../profile/settings_screen.dart';
 import '../reports/report_history_screen.dart';
 import '../safety/trusted_contacts_screen.dart';
@@ -18,7 +18,7 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar> {
     const HomeScreen(),
     const TrustedContactsScreen(),
     const ReportHistoryScreen(),
-    const SettingsScreen(),
+     SettingsScreen(onBackPressed: () {  },),
   ];
 
   @override

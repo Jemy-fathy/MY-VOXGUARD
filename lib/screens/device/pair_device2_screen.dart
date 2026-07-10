@@ -1,9 +1,12 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
+import 'dart:ui' as ui;
 import '../safety/monitoring_screen.dart';
 
 class PairDevice2Screen extends StatefulWidget {
-  const PairDevice2Screen({super.key});
+  final String? deviceName;
+  const PairDevice2Screen({super.key, this.deviceName});
 
   @override
   _PairDevice2ScreenState createState() => _PairDevice2ScreenState();
@@ -51,15 +54,18 @@ class _PairDevice2ScreenState extends State<PairDevice2Screen>
               padding:
                   const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
               child: Row(
+                textDirection: context.locale.languageCode == 'ar' ? ui.TextDirection.rtl : ui.TextDirection.ltr,
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.arrow_back_ios,
-                        color: Colors.white, size: 20),
+                    icon: Icon(
+                      Icons.arrow_back_ios_new_rounded,
+                      color: Colors.white, size: 20),
                     onPressed: () => Navigator.pop(context),
                   ),
-                  const Text(
-                    'Pair Device ',
-                    style: TextStyle(
+                  const SizedBox(width: 8),
+                  Text(
+                    'pair_device'.tr(),
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 20,
                       fontWeight: FontWeight.w600,
@@ -106,8 +112,8 @@ class _PairDevice2ScreenState extends State<PairDevice2Screen>
                           ),
                         ),
                         const SizedBox(width: 12),
-                        const Text(
-                          'Scanning for devices',
+                        Text(
+                          'scanning_for_devices'.tr(),
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w300,
@@ -125,8 +131,8 @@ class _PairDevice2ScreenState extends State<PairDevice2Screen>
                           Color(0xFFFBACB7),
                         ],
                       ).createShader(bounds),
-                      child: const Text(
-                        'Available device',
+                      child: Text(
+                        'available_devices'.tr(),
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
@@ -143,14 +149,14 @@ class _PairDevice2ScreenState extends State<PairDevice2Screen>
                               padding: EdgeInsets.zero,
                               children: [
                                 _buildDeviceCard(
-                                  name: 'Smartwix',
-                                  status: 'Connected',
+                                  name: widget.deviceName ?? 'Smartwix',
+                                  status: 'connected'.tr(),
                                   isConnected: true,
                                 ),
                                 const SizedBox(height: 12),
                                 _buildDeviceCard(
-                                  name: 'Smartwix',
-                                  status: 'ready to pair',
+                                  name: widget.deviceName ?? 'Smartwix',
+                                  status: 'ready_to_pair'.tr(),
                                   isConnected: false,
                                 ),
                               ],
@@ -190,9 +196,9 @@ class _PairDevice2ScreenState extends State<PairDevice2Screen>
                                     ),
                                   );
                                 },
-                                child: const Center(
+                                child: Center(
                                   child: Text(
-                                    'Show monitoring',
+                                    'show_monitoring'.tr(),
                                     style: TextStyle(
                                       color: Colors.white,
                                       fontSize: 18,
@@ -326,7 +332,7 @@ class _PairDevice2ScreenState extends State<PairDevice2Screen>
                   padding:
                       const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                   child: Text(
-                    isConnected ? 'Connected' : 'Connect',
+                    isConnected ? 'connected'.tr() : 'connect'.tr(),
                     style: TextStyle(
                       color: isConnected ? Colors.black : Colors.white,
                       fontSize: 15,

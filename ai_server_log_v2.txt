@@ -1,0 +1,30 @@
+18:38:55 INFO DB ready — 0 user(s)
+18:38:55 INFO تحميل WavLM...
+/Users/mohamedgamal/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+18:38:57 INFO تحميل WavLM من HuggingFace (~400MB)...
+18:39:08 INFO WavLM: ✓
+18:39:08 WARNING API key auth DISABLED — set VG_API_KEYS to enable
+18:39:08 INFO ==================================================
+18:39:08 INFO   VoxGuard Voice Biometric API v2.0
+18:39:08 INFO   Swagger : http://localhost:9000/docs
+18:39:08 INFO   Health  : http://localhost:9000/health
+18:39:08 INFO   WavLM   : ✓ OK
+18:39:08 INFO   DB      : voxguard_users.db (0 users)
+18:39:08 INFO ==================================================
+/Users/mohamedgamal/Library/Python/3.9/lib/python/site-packages/torch/nn/functional.py:6041: UserWarning: Support for mismatched key_padding_mask and attn_mask is deprecated. Use same type for both instead.
+  warnings.warn(
+18:40:24 INFO ENROLL 37 320ms
+19:21:47 INFO ENROLL 37 1835ms
+19:23:08 INFO ENROLL 37 1380ms
+19:23:52 INFO ENROLL 37 199ms
+WARNING:  Invalid HTTP request received.
+WARNING:  Invalid HTTP request received.
+21:18:58 INFO ENROLL 37 1837ms
+21:19:28 INFO ENROLL 37 137ms
+21:22:42 INFO ENROLL 37 158ms
+21:25:25 INFO ENROLL 37 186ms
+21:25:33 INFO VERIFY user=37 0.2076 match=False 94ms
+21:29:52 INFO ENROLL 37 194ms
+21:30:00 INFO VERIFY user=37 0.4604 match=False 115ms
+21:30:16 INFO VERIFY user=37 0.3711 match=False 117ms

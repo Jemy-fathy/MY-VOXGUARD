@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../config/colors.dart';
 
 class AppLogoHeader extends StatelessWidget {
@@ -6,6 +7,7 @@ class AppLogoHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    bool isArabic = context.locale.languageCode == 'ar';
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       mainAxisSize: MainAxisSize.min,
@@ -23,9 +25,9 @@ class AppLogoHeader extends StatelessWidget {
             end: Alignment.centerRight,
             colors: AppColors.logoGradient,
           ).createShader(bounds),
-          child: const Text(
-            "voxguard",
-            style: TextStyle(
+          child: Text(
+            isArabic ? "فوكس جارد" : "voxguard",
+            style: const TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.bold,
               color: Colors.white,

@@ -1,18 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../../config/colors.dart';
 import '../../custom_widgets/custom_button.dart';
 
-class SplashScreen extends StatefulWidget {
+class SplashScreen extends StatelessWidget {
   const SplashScreen({super.key});
 
   @override
-  State<SplashScreen> createState() => _SplashScreenState();
-}
-
-class _SplashScreenState extends State<SplashScreen> {
-
-  @override
   Widget build(BuildContext context) {
+    bool isArabic = context.locale.languageCode == 'ar';
     return Scaffold(
       body: Container(
         width: double.infinity,
@@ -39,9 +35,9 @@ class _SplashScreenState extends State<SplashScreen> {
                 end: Alignment.centerRight,
                 colors: AppColors.logoGradient,
               ).createShader(bounds),
-              child: const Text(
-                "voxguard",
-                style: TextStyle(fontSize: 42, fontWeight: FontWeight.bold, color: Colors.white),
+              child: Text(
+                isArabic ? "فوكس جارد" : "voxguard",
+                style: const TextStyle(fontSize: 42, fontWeight: FontWeight.bold, color: Colors.white),
               ),
             ),
             const Spacer(),
@@ -53,10 +49,10 @@ class _SplashScreenState extends State<SplashScreen> {
                   end: Alignment.centerRight,
                   colors: AppColors.logoGradient,
                 ).createShader(bounds),
-                child: const Text(
-                  "YOUR VOICE IS\nYOUR SHIELD",
+                child: Text(
+                  "splash_slogan".tr(),
                   textAlign: TextAlign.center,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontFamily: 'Inter',
                     fontSize: 25,
                     fontWeight: FontWeight.w700,
@@ -71,7 +67,7 @@ class _SplashScreenState extends State<SplashScreen> {
             Padding(
               padding: const EdgeInsets.only(bottom: 60, left: 25, right: 25),
               child: CustomButton(
-                text: "start",
+                text: "start".tr(),
                 onPressed: () => Navigator.pushNamed(context, '/login'),
               ),
             ),

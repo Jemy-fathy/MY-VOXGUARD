@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
+import 'package:vox_guard/screens/sos/home_screen.dart';
 import '../../config/colors.dart';
 import 'voice_password_setup_screen.dart';
-import '../sos/home_screen.dart'; 
 
 class VoicePasswordIntroScreen extends StatelessWidget {
   const VoicePasswordIntroScreen({super.key});
@@ -72,7 +73,7 @@ class VoicePasswordIntroScreen extends StatelessWidget {
                     height: 200,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: const Color(0xFFD546F3).withValues(alpha: 0.05),
+                      color: const Color(0xFFD546F3).withOpacity(0.05),
                     ),
                   ),
                   Container(
@@ -80,7 +81,7 @@ class VoicePasswordIntroScreen extends StatelessWidget {
                     height: 160,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: const Color(0xFFD546F3).withValues(alpha: 0.1),
+                      color: const Color(0xFFD546F3).withOpacity(0.1),
                     ),
                   ),
                   Container(
@@ -88,10 +89,10 @@ class VoicePasswordIntroScreen extends StatelessWidget {
                     height: 100,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: const Color(0xFFD546F3).withValues(alpha: 0.2),
+                      color: const Color(0xFFD546F3).withOpacity(0.2),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color.fromARGB(255, 228, 81, 239).withValues(alpha: 0.3),
+                          color: const Color.fromARGB(255, 228, 81, 239).withOpacity(0.3),
                           blurRadius: 15,
                           offset: const Offset(0, 5),
                         ),
@@ -115,10 +116,10 @@ class VoicePasswordIntroScreen extends StatelessWidget {
                     Color(0XFFFBACB7),
                   ],
                 ).createShader(bounds),
-                child: const Text(
-                  'Set up your voice password',
+                child: Text(
+                  'setup_voice_password'.tr(),
                   textAlign: TextAlign.center,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 26,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
@@ -130,7 +131,7 @@ class VoicePasswordIntroScreen extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 32.0),
                 child: Text(
-                  'Create your Secret Voice Password to trigger SOS instantly using your voice.\nWorks even when your phone is locked.',
+                  'voice_password_desc'.tr(),
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.grey[600],
@@ -171,9 +172,9 @@ class VoicePasswordIntroScreen extends StatelessWidget {
                           shadowColor: Colors.transparent,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                         ),
-                        child: const Text(
-                          'Add voice password',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.white),
+                        child: Text(
+                          'add_voice_password'.tr(),
+                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.white),
                         ),
                       ),
                     ),
@@ -205,9 +206,9 @@ class VoicePasswordIntroScreen extends StatelessWidget {
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                           elevation: 0,
                         ),
-                        child: const Text(
-                          'Skip for now',
-                          style: TextStyle(
+                        child: Text(
+                          'skip_for_now'.tr(),
+                          style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w600,
                             color: Colors.black87,

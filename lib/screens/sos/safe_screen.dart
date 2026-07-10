@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'dart:io';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:http/http.dart' as http;
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -38,19 +40,16 @@ class _SafeScreenState extends State<SafeHomeScreen> with TickerProviderStateMix
 
   GoogleMapController? _googleMapController;
   LatLng _currentLatLng = const LatLng(30.0444, 31.2357);
-  String _locationText = "Loading location...";
+  final String _locationText = "Loading location...";
   bool _isStopping = false;
 
   final String sosApiUrl = "http://192.168.1.191:8000/api/sos";
 
-  final List<Widget> _pages = [
-    const SizedBox.shrink(),
-    const TrustedContactsScreen(),
-    const CreateReportScreen(),
-    const SettingsScreen(),
-  ];
+
   String _userName = "Loading...";
-  String _userImage = "";
+  String? _localProfileImagePath;
+  String? _profileImageUrl;
+  String? _token;
 
 int? _sosId;
 
@@ -82,8 +81,15 @@ void didChangeDependencies() {
     final prefs = await SharedPreferences.getInstance();
     if (mounted) {
       setState(() {
-        _userName = prefs.getString('user_name') ?? "User";
-        _userImage = prefs.getString('user_image') ?? "";
+        String rawName = prefs.getString('user_name') ?? prefs.getString('first_name') ?? "User";
+        rawName = rawName.replaceAll('FacebookUser', '').trim();
+        if (rawName.endsWith('.')) {
+          rawName = rawName.substring(0, rawName.length - 1).trim();
+        }
+        _userName = rawName;
+        _localProfileImagePath = prefs.getString('local_profile_image');
+        _profileImageUrl = prefs.getString('user_image');
+        _token = prefs.getString('token');
       });
     }
   }
@@ -163,6 +169,30 @@ void didChangeDependencies() {
 
   @override
   Widget build(BuildContext context) {
+    final List<Widget> pages = [
+      const SizedBox.shrink(),
+      TrustedContactsScreen(
+        onBackPressed: () {
+          setState(() {
+            _selectedIndex = 0;
+          });
+        },
+      ),
+      CreateReportScreen(
+        onBackPressed: () {
+          setState(() {
+            _selectedIndex = 0;
+          });
+        },
+      ),
+      SettingsScreen(
+        onBackPressed: () {
+          setState(() {
+            _selectedIndex = 0;
+          });
+        },
+      ),
+    ];
     return Scaffold(
       body: Container(
         width: double.infinity,
@@ -176,7 +206,7 @@ void didChangeDependencies() {
         ),
         child: _selectedIndex == 0
             ? _buildSafeMainContent()
-            : _pages[_selectedIndex],
+            : pages[_selectedIndex],
       ),
       bottomNavigationBar: _bottomNav(),
     );
@@ -286,13 +316,22 @@ void didChangeDependencies() {
           CircleAvatar(
             radius: 24,
             backgroundColor: Colors.white24,
-            backgroundImage: _userImage.isNotEmpty
-                ? NetworkImage(_userImage)
-                : const AssetImage('images/person.png') as ImageProvider,
+            backgroundImage: _localProfileImagePath != null && _localProfileImagePath!.isNotEmpty
+                ? FileImage(File(_localProfileImagePath!)) as ImageProvider
+                : (_profileImageUrl != null && _profileImageUrl!.isNotEmpty
+                    ? (_profileImageUrl!.startsWith('http')
+                        ? NetworkImage(
+                            _profileImageUrl!,
+                            headers: _token != null
+                                ? {'Authorization': 'Bearer $_token'}
+                                : {},
+                          ) as ImageProvider
+                        : FileImage(File(_profileImageUrl!)) as ImageProvider)
+                    : const AssetImage('images/man.jpg') as ImageProvider),
           ),
           const SizedBox(width: 12),
           Text(
-            'Hi, $_userName',
+            'hi'.tr(args: [_userName]),
             style: const TextStyle(
               color: Colors.white,
               fontSize: 18,
@@ -301,10 +340,13 @@ void didChangeDependencies() {
           ),
           const Spacer(),
           GestureDetector(
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const ProfileScreen()),
-            ),
+            onTap: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ProfileScreen()),
+              );
+              _loadUserPreferences();
+            },
             child: Container(
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
@@ -328,7 +370,7 @@ void didChangeDependencies() {
         children: [
           _actionItem(
             'call.png',
-            'Fake call',
+            'fake_call'.tr(),
             () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const FakeCallScreen()),
@@ -336,7 +378,7 @@ void didChangeDependencies() {
           ),
           _actionItem(
             'location.png',
-            'Share location',
+            'share_location'.tr(),
             () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const StartTripScreen()),
@@ -344,7 +386,7 @@ void didChangeDependencies() {
           ),
           _actionItem(
             'mic.png',
-            'Voice password',
+            'voice_password'.tr(),
             () => Navigator.push(
               context,
               MaterialPageRoute(
@@ -403,19 +445,19 @@ void didChangeDependencies() {
             ),
           ],
         ),
-        child: const Column(
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text("Today's Safety Status",
-                style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
-            SizedBox(height: 12),
+            Text("safety_status".tr(),
+                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 12),
             Row(
               children: [
-                Icon(Icons.circle, color: Colors.red, size: 12),
-                SizedBox(width: 10),
+                const Icon(Icons.circle, color: Colors.red, size: 12),
+                const SizedBox(width: 10),
                 Text(
-                  "You Are Un Safe",
-                  style: TextStyle(
+                  "you_are_unsafe".tr(),
+                  style: const TextStyle(
                     color: Colors.red,
                     fontWeight: FontWeight.bold,
                     fontSize: 15,
@@ -424,10 +466,10 @@ void didChangeDependencies() {
               ],
             ),
             Padding(
-              padding: EdgeInsets.only(left: 30),
+              padding: const EdgeInsets.only(left: 30),
               child: Text(
-                "All System Normal. Stay Aware",
-                style: TextStyle(color: Colors.grey, fontSize: 12),
+                "systems_normal".tr(),
+                style: const TextStyle(color: Colors.grey, fontSize: 12),
               ),
             ),
           ],
@@ -540,10 +582,10 @@ void didChangeDependencies() {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _bottomItem(Icons.home_rounded, "Home", 0),
-          _bottomItem(Icons.account_circle_outlined, "Contacts", 1),
-          _bottomItem(Icons.file_copy_sharp, "Reports", 2),
-          _bottomItem(Icons.settings_rounded, "Settings", 3),
+          _bottomItem(Icons.home_rounded, "home_label".tr(), 0),
+          _bottomItem(Icons.account_circle_outlined, "contacts_label".tr(), 1),
+          _bottomItem(Icons.file_copy_sharp, "reports_label".tr(), 2),
+          _bottomItem(Icons.settings_rounded, "settings_label".tr(), 3),
         ],
       ),
     );

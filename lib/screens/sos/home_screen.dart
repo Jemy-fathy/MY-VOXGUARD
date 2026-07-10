@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -87,7 +88,9 @@ class _HomeScreenState extends State<HomeScreen>
       permission = await Geolocator.requestPermission();
     }
     if (permission == LocationPermission.denied ||
-        permission == LocationPermission.deniedForever) return;
+        permission == LocationPermission.deniedForever) {
+      return;
+    }
 
     try {
       final Position position = await Geolocator.getCurrentPosition();
@@ -155,9 +158,27 @@ class _HomeScreenState extends State<HomeScreen>
   Widget build(BuildContext context) {
     final List<Widget> pages = [
       _buildHomeContent(),
-      const TrustedContactsScreen(),
-      const CreateReportScreen(),
-      const SettingsScreen(),
+      TrustedContactsScreen(
+        onBackPressed: () {
+          setState(() {
+            _selectedIndex = 0;
+          });
+        },
+      ),
+      CreateReportScreen(
+        onBackPressed: () {
+          setState(() {
+            _selectedIndex = 0;
+          });
+        },
+      ),
+      SettingsScreen(
+        onBackPressed: () {
+          setState(() {
+            _selectedIndex = 0;
+          });
+        },
+      ),
     ];
     return Scaffold(
       body: Container(
@@ -218,18 +239,21 @@ class _HomeScreenState extends State<HomeScreen>
             backgroundColor: Colors.white24,
             backgroundImage: _userImage.isNotEmpty
                 ? NetworkImage(_userImage)
-                : const AssetImage('images/person.png') as ImageProvider,
+                : const AssetImage('images/man.jpg') as ImageProvider,
           ),
           const SizedBox(width: 12),
-          Text('Hi, $_userName',
+          Text('hi'.tr(args: [_userName]),
               style: const TextStyle(
                   color: Colors.white,
                   fontSize: 18,
                   fontWeight: FontWeight.w600)),
           const Spacer(),
           GestureDetector(
-            onTap: () => Navigator.push(context,
-                MaterialPageRoute(builder: (context) => const ProfileScreen())),
+            onTap: () async {
+              await Navigator.push(context,
+                  MaterialPageRoute(builder: (context) => const ProfileScreen()));
+              _loadUserPreferences();
+            },
             child: Container(
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
@@ -302,17 +326,17 @@ class _HomeScreenState extends State<HomeScreen>
         children: [
           _actionItem(
               'call.png',
-              'Fake call',
+              'fake_call'.tr(),
               () => Navigator.push(context,
                   MaterialPageRoute(builder: (context) => const FakeCallScreen()))),
           _actionItem(
               'location.png',
-              'Start Trip',
+              'start_trip'.tr(),
               () => Navigator.push(context,
                   MaterialPageRoute(builder: (context) => const StartTripScreen()))),
           _actionItem(
               'mic.png',
-              'Voice password',
+              'voice_password'.tr(),
               () => Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -366,19 +390,19 @@ class _HomeScreenState extends State<HomeScreen>
             ),
           ],
         ),
-        child: const Column(
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text("Today's Safety Status",
-                style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
-            SizedBox(height: 12),
+            Text("safety_status".tr(),
+                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 12),
             Row(
               children: [
-                Icon(Icons.circle, color: Colors.green, size: 12),
-                SizedBox(width: 10),
+                const Icon(Icons.circle, color: Colors.green, size: 12),
+                const SizedBox(width: 10),
                 Text(
-                  "You Are Safe",
-                  style: TextStyle(
+                  "you_are_safe".tr(),
+                  style: const TextStyle(
                     color: Colors.green,
                     fontWeight: FontWeight.bold,
                     fontSize: 15,
@@ -387,10 +411,10 @@ class _HomeScreenState extends State<HomeScreen>
               ],
             ),
             Padding(
-              padding: EdgeInsets.only(left: 30),
+              padding: const EdgeInsets.only(left: 30),
               child: Text(
-                "All System Normal. Stay Aware",
-                style: TextStyle(color: Colors.grey, fontSize: 12),
+                "systems_normal".tr(),
+                style: const TextStyle(color: Colors.grey, fontSize: 12),
               ),
             ),
           ],
@@ -464,10 +488,10 @@ class _HomeScreenState extends State<HomeScreen>
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _bottomItem(Icons.home_rounded, "Home", 0),
-          _bottomItem(Icons.account_circle_outlined, "Contacts", 1),
-          _bottomItem(Icons.file_copy_sharp, "Reports", 2),
-          _bottomItem(Icons.settings_rounded, "Settings", 3),
+          _bottomItem(Icons.home_rounded, "home_label".tr(), 0),
+          _bottomItem(Icons.account_circle_outlined, "contacts_label".tr(), 1),
+          _bottomItem(Icons.file_copy_sharp, "reports_label".tr(), 2),
+          _bottomItem(Icons.settings_rounded, "settings_label".tr(), 3),
         ],
       ),
     );
@@ -478,7 +502,7 @@ class _HomeScreenState extends State<HomeScreen>
     return InkWell(
       onTap: () => setState(() => _selectedIndex = index),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
+        duration: const Duration(milliseconds: 0),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
             color: isSelected ? const Color(0xFFCB30E0) : Colors.transparent,
