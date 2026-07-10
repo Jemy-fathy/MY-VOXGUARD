@@ -268,6 +268,7 @@ class _StartTripScreenState extends State<StartTripScreen> {
         throw Exception('Server returned status: ${response.statusCode}');
       }
     } catch (e) {
+      if (!mounted) return;
       if (e is DioException &&
           (e.type == DioExceptionType.connectionTimeout ||
            e.type == DioExceptionType.sendTimeout ||

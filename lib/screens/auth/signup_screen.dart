@@ -280,6 +280,7 @@ class _SignupScreenState extends State<SignupScreen> {
       }
     } catch (e) {
       print("DEBUG: Signup Error: $e");
+      if (!mounted) return;
       
       if (!isRetry) {
         // Show a temporary dialog while we search the network for the server

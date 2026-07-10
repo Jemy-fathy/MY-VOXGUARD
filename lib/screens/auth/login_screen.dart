@@ -164,6 +164,7 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } catch (e) {
       dev.log("Login Error: $e");
+      if (!mounted) return;
       
       if (!isRetry) {
         // Show a temporary dialog while we search the network for the server
@@ -234,6 +235,7 @@ class _LoginScreenState extends State<LoginScreen> {
       );
     } catch (error) {
       dev.log("Google Sign In Error (using fallback): $error");
+      if (!mounted) return;
       _showDemoGoogleDialog();
     } finally {
       if (mounted) setState(() => isLoading = false);
