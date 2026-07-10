@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:ui' as ui;
+import 'dart:convert';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -30,8 +31,27 @@ class _StartTripScreenState extends State<StartTripScreen> {
   @override
   void initState() {
     super.initState();
+    _loadLocalContacts();
     _fetchContacts();
     _fetchZones();
+  }
+
+  Future<void> _loadLocalContacts() async {
+    final prefs = await SharedPreferences.getInstance();
+    final String? localData = prefs.getString('local_trusted_contacts');
+    if (localData != null) {
+      try {
+        final List<dynamic> decoded = jsonDecode(localData);
+        if (mounted) {
+          setState(() {
+            contacts = decoded;
+            isLoading = false;
+          });
+        }
+      } catch (e) {
+        debugPrint("Error loading local contacts in StartTripScreen: $e");
+      }
+    }
   }
 
   Future<void> _fetchZones() async {
@@ -68,13 +88,15 @@ class _StartTripScreenState extends State<StartTripScreen> {
 
   Future<void> _fetchContacts() async {
     if (!mounted) return;
-    setState(() => isLoading = true);
+    if (contacts.isEmpty) {
+      setState(() => isLoading = true);
+    }
     try {
       final prefs = await SharedPreferences.getInstance();
-      final String? token = prefs.getString('token');
+      final String? token = prefs.getString('token') ?? prefs.getString('auth_token');
 
       var response = await Dio().get(
-        "${ApiConfig.baseUrl}/trusted-contacts/index",
+        "${ApiConfig.baseUrl}/trusted-contacts",
         options: Options(
           headers: {
             "Accept": "application/json",
@@ -83,29 +105,7 @@ class _StartTripScreenState extends State<StartTripScreen> {
         ),
       );
 
-      if (!mounted) return;
-      setState(() {
-        if (response.data is Map && response.data['contacts'] != null) {
-          contacts = response.data['contacts'];
-        } else {
-          contacts = [];
-        }
-        isLoading = false;
-      });
-    } catch (e) {
-      try {
-        final prefs = await SharedPreferences.getInstance();
-        final String? token = prefs.getString('token');
-        var response = await Dio().get(
-          "${ApiConfig.baseUrl}/trusted-contacts",
-          options: Options(
-            headers: {
-              "Accept": "application/json",
-              "Authorization": "Bearer $token",
-            },
-          ),
-        );
-        if (!mounted) return;
+      if (mounted) {
         setState(() {
           if (response.data is Map && response.data['contacts'] != null) {
             contacts = response.data['contacts'];
@@ -114,8 +114,11 @@ class _StartTripScreenState extends State<StartTripScreen> {
           }
           isLoading = false;
         });
-      } catch (_) {
-        if (!mounted) return;
+        await prefs.setString('local_trusted_contacts', jsonEncode(contacts));
+      }
+    } catch (e) {
+      await _loadLocalContacts();
+      if (mounted) {
         setState(() => isLoading = false);
       }
     }
