@@ -259,6 +259,8 @@ class _VoxGuardAppState extends State<VoxGuardApp> {
           priority: Priority.high,
           playSound: true,
           icon: 'ic_launcher',
+          fullScreenIntent: true,
+          category: AndroidNotificationCategory.call,
         );
 
         const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
@@ -280,9 +282,6 @@ class _VoxGuardAppState extends State<VoxGuardApp> {
         final bool isBackground = state == AppLifecycleState.paused || state == AppLifecycleState.inactive;
 
         if (isBackground && Platform.isAndroid) {
-          // Note: Commented out to prevent debugger from pausing on unbuilt drawable icon resources.
-          // Once you run 'flutter clean' and 'flutter run' to rebuild, you can uncomment this to test background ringing.
-          /*
           try {
             await flutterLocalNotificationsPlugin.show(
               999,
@@ -299,7 +298,6 @@ class _VoxGuardAppState extends State<VoxGuardApp> {
           } catch (e) {
             debugPrint("Failed to show local notification: $e");
           }
-          */
         }
 
         // Trigger the fake call screen immediately so it functions even if notifications fail
