@@ -334,7 +334,7 @@ class _FakeCallScreenState extends State<FakeCallScreen> {
               MaterialPageRoute(
                 builder: (context) => FakeCallSuccessScreen(
                   callTime: selectedTime.tr(),
-                  name: selectedCaller.tr(),
+                  name: selectedCaller,
                   imagePath: imgPath,
                   callerName: selectedCaller.tr(),
                   ringtone: selectedRingtone.tr(),

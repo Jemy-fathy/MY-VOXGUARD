@@ -60,23 +60,24 @@ class _FakeCallSuccessScreenState extends State<FakeCallSuccessScreen> {
 
   void _navigateToCall() {
     Widget target;
-    if (widget.name == 'Mom') {
+    final String callerKey = widget.name.toLowerCase();
+    if (callerKey == 'mom') {
       target = IncomingFakeCallMom(
-          name: widget.name,
+          name: widget.callerName,
           imagePath: widget.imagePath,
           callerName: widget.callerName,
           callTime: widget.callTime,
           ringtone: widget.ringtone);
-    } else if (widget.name == 'Dad') {
+    } else if (callerKey == 'dad') {
       target = IncomingFakeCallDad(
-          name: widget.name,
+          name: widget.callerName,
           imagePath: widget.imagePath,
           callerName: widget.callerName,
           callTime: widget.callTime,
           ringtone: widget.ringtone);
     } else {
       target = IncomingFakeCallPolice(
-          name: widget.name,
+          name: widget.callerName,
           imagePath: widget.imagePath,
           callerName: widget.callerName,
           callTime: widget.callTime,
