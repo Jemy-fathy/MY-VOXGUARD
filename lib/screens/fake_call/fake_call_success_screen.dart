@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_background_service/flutter_background_service.dart';
 import '/screens/fake_call/incoming_fake_call_dad.dart';
 import '/screens/fake_call/incoming_fake_call_mom.dart';
 import '/screens/fake_call/incoming_fake_call_police.dart';
@@ -33,8 +34,22 @@ class _FakeCallSuccessScreenState extends State<FakeCallSuccessScreen> {
     _startAutoNavigation();
   }
 
-  void _startAutoNavigation() {
+  void _startAutoNavigation() async {
     int seconds = _parseTimeToSeconds(widget.callTime);
+
+    try {
+      final service = FlutterBackgroundService();
+      if (await service.isRunning()) {
+        service.invoke('scheduleBackgroundFakeCall', {
+          'seconds': seconds,
+          'caller': widget.name.toLowerCase(),
+          'ringtone': widget.ringtone,
+          'imgPath': widget.imagePath,
+        });
+      }
+    } catch (e) {
+      debugPrint("Error invoking background fake call: $e");
+    }
 
     _timer = Timer(Duration(seconds: seconds), () {
       if (mounted) {

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:ui';
 import 'package:flutter_background_service/flutter_background_service.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:record/record.dart';
@@ -78,6 +79,73 @@ void onStart(ServiceInstance service) async {
     await prefs.remove('active_sos_id');
     activeSosIdInMemory = null;
     _log('✅ SOS Stopped.');
+  });
+
+  service.on('scheduleBackgroundFakeCall').listen((event) async {
+    if (event == null) return;
+    int seconds = event['seconds'] ?? 0;
+    String caller = event['caller'] ?? 'mom';
+    String ringtone = event['ringtone'] ?? 'ringtone_default';
+    String imgPath = event['imgPath'] ?? 'images/Woman.png';
+
+    Timer(Duration(seconds: seconds), () async {
+      // 1. Send event back to main UI thread in case the app is running
+      service.invoke('triggerFakeCallNow', {
+        'caller': caller,
+        'ringtone': ringtone,
+        'imgPath': imgPath,
+      });
+
+      // 2. Show a local notification to wake up the screen and let the user tap to open the fake call
+      const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+        'voxguard_fake_call',
+        'VoxGuard Fake Call',
+        channelDescription: 'This channel is used to trigger scheduled fake calls.',
+        importance: Importance.max,
+        priority: Priority.high,
+        fullScreenIntent: true,
+        playSound: true,
+        category: AndroidNotificationCategory.call,
+      );
+
+      const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+        categoryIdentifier: 'fake_call_category',
+      );
+
+      const NotificationDetails platformDetails = NotificationDetails(
+        android: androidDetails,
+        iOS: iosDetails,
+      );
+
+      final FlutterLocalNotificationsPlugin localNotifications = FlutterLocalNotificationsPlugin();
+      const initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/ic_launcher');
+      const initializationSettingsDarwin = DarwinInitializationSettings();
+      const initializationSettings = InitializationSettings(
+        android: initializationSettingsAndroid,
+        iOS: initializationSettingsDarwin,
+      );
+      await localNotifications.initialize(initializationSettings);
+
+      String callerDisplayName = caller == 'mom' 
+          ? 'أمي (Mom)' 
+          : (caller == 'dad' ? 'أبي (Dad)' : 'الشرطة (Police)');
+
+      await localNotifications.show(
+        999,
+        'إتصال وارد (Incoming Call)',
+        'اضغط للرد على $callerDisplayName',
+        platformDetails,
+        payload: jsonEncode({
+          'type': 'fake_call',
+          'caller': caller,
+          'ringtone': ringtone,
+          'imgPath': imgPath,
+        }),
+      );
+    });
   });
 
   service.invoke('serviceStarted');

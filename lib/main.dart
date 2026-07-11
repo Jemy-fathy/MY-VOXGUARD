@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/services.dart';
 
 import 'package:flutter/material.dart';
@@ -7,6 +8,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:permission_handler/permission_handler.dart';
+
+import 'screens/fake_call/incoming_fake_call_mom.dart';
+import 'screens/fake_call/incoming_fake_call_dad.dart';
+import 'screens/fake_call/incoming_fake_call_police.dart';
 
 import 'screens/auth/password/change_password_screen.dart';
 import 'screens/auth/splash_screen.dart';
@@ -83,6 +88,59 @@ class AppLifecycleReactor extends WidgetsBindingObserver {
   }
 }
 
+void _handleFakeCallTrigger(Map<String, dynamic> data) {
+  final context = navigatorKey.currentContext;
+  if (context == null) return;
+
+  // Prevent duplicate navigations if we are already on an incoming call screen
+  bool isAlreadyOnCall = false;
+  navigatorKey.currentState?.popUntil((route) {
+    if (route.settings.name != null && route.settings.name!.contains('IncomingFakeCall')) {
+      isAlreadyOnCall = true;
+    }
+    return true;
+  });
+  if (isAlreadyOnCall) return;
+
+  String caller = data['caller'] ?? 'mom';
+  String ringtone = data['ringtone'] ?? 'ringtone_default';
+  String imgPath = data['imgPath'] ?? 'images/Woman.png';
+
+  Widget target;
+  if (caller == 'mom') {
+    target = IncomingFakeCallMom(
+      name: 'mom'.tr(),
+      imagePath: imgPath,
+      callerName: 'mom'.tr(),
+      callTime: 'now'.tr(),
+      ringtone: ringtone,
+    );
+  } else if (caller == 'dad') {
+    target = IncomingFakeCallDad(
+      name: 'dad'.tr(),
+      imagePath: imgPath,
+      callerName: 'dad'.tr(),
+      callTime: 'now'.tr(),
+      ringtone: ringtone,
+    );
+  } else {
+    target = IncomingFakeCallPolice(
+      name: 'police'.tr(),
+      imagePath: imgPath,
+      callerName: 'police'.tr(),
+      callTime: 'now'.tr(),
+      ringtone: ringtone,
+    );
+  }
+
+  navigatorKey.currentState?.push(
+    MaterialPageRoute(
+      settings: RouteSettings(name: 'IncomingFakeCall$caller'),
+      builder: (context) => target,
+    ),
+  );
+}
+
 Future<void> _setupNotifications() async {
   const AndroidInitializationSettings initializationSettingsAndroid =
       AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -103,6 +161,16 @@ Future<void> _setupNotifications() async {
     settings: initializationSettings,
     onDidReceiveNotificationResponse: (NotificationResponse response) {
       debugPrint("Notification clicked: ${response.payload}");
+      if (response.payload != null) {
+        try {
+          final data = jsonDecode(response.payload!);
+          if (data['type'] == 'fake_call') {
+            _handleFakeCallTrigger(Map<String, dynamic>.from(data));
+          }
+        } catch (e) {
+          debugPrint("Error handling notification payload: $e");
+        }
+      }
     },
   );
 
@@ -150,6 +218,35 @@ class _VoxGuardAppState extends State<VoxGuardApp> {
       }
     });
     _checkPendingTrigger();
+
+    // Listen to background service event to trigger fake call on UI thread
+    FlutterBackgroundService().on('triggerFakeCallNow').listen((event) {
+      if (event != null) {
+        _handleFakeCallTrigger(Map<String, dynamic>.from(event));
+      }
+    });
+
+    _checkLaunchNotification();
+  }
+
+  Future<void> _checkLaunchNotification() async {
+    try {
+      final NotificationAppLaunchDetails? details =
+          await flutterLocalNotificationsPlugin.getNotificationAppLaunchDetails();
+      if (details?.didNotificationLaunchApp ?? false) {
+        final payload = details?.notificationResponse?.payload;
+        if (payload != null) {
+          final data = jsonDecode(payload);
+          if (data['type'] == 'fake_call') {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _handleFakeCallTrigger(Map<String, dynamic>.from(data));
+            });
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint("Error checking launch notification: $e");
+    }
   }
 
   void _navigateToEmergency() {
