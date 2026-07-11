@@ -145,7 +145,7 @@ void _handleFakeCallTrigger(Map<String, dynamic> data) {
 Future<void> _setupNotifications() async {
   try {
     const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('ic_launcher');
+        AndroidInitializationSettings('launcher_icon');
 
     const DarwinInitializationSettings initializationSettingsDarwin =
         DarwinInitializationSettings(
@@ -258,7 +258,7 @@ class _VoxGuardAppState extends State<VoxGuardApp> {
           importance: Importance.max,
           priority: Priority.high,
           playSound: true,
-          icon: 'ic_launcher',
+          icon: 'launcher_icon',
           fullScreenIntent: true,
           category: AndroidNotificationCategory.call,
         );
