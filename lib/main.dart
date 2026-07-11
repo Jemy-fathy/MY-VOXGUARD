@@ -253,61 +253,7 @@ class _VoxGuardAppState extends State<VoxGuardApp> {
         String ringtone = data['ringtone'] ?? 'ringtone_default';
         String imgPath = data['imgPath'] ?? 'images/Woman.png';
 
-        const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-          'voxguard_fake_call',
-          'VoxGuard Fake Call',
-          channelDescription: 'This channel is used to trigger scheduled fake calls.',
-          importance: Importance.max,
-          priority: Priority.high,
-          playSound: true,
-          icon: 'launcher_icon',
-          fullScreenIntent: true,
-          category: AndroidNotificationCategory.call,
-        );
-
-        const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
-          presentAlert: true,
-          presentBadge: true,
-          presentSound: true,
-        );
-
-        const NotificationDetails platformDetails = NotificationDetails(
-          android: androidDetails,
-          iOS: iosDetails,
-        );
-
-        String callerDisplayName = caller == 'mom' 
-            ? 'أمي (Mom)' 
-            : (caller == 'dad' ? 'أبي (Dad)' : 'الشرطة (Police)');
-
-        final state = WidgetsBinding.instance.lifecycleState;
-        final bool isBackground = state == AppLifecycleState.paused || state == AppLifecycleState.inactive;
-
-        if (isBackground && Platform.isAndroid && _enableBackgroundNotification) {
-          try {
-            final bool isPermissionGranted = await Permission.notification.isGranted;
-            if (isPermissionGranted) {
-              await flutterLocalNotificationsPlugin.show(
-                999,
-                'إتصال وارد (Incoming Call)',
-                'اضغط للرد على $callerDisplayName',
-                platformDetails,
-                payload: jsonEncode({
-                  'type': 'fake_call',
-                  'caller': caller,
-                  'ringtone': ringtone,
-                  'imgPath': imgPath,
-                }),
-              );
-            } else {
-              debugPrint("Notification permission not granted, skipping show.");
-            }
-          } catch (e) {
-            debugPrint("Failed to show local notification: $e");
-          }
-        }
-
-        // Trigger the fake call screen immediately so it functions even if notifications fail
+        // Trigger the fake call screen immediately
         _handleFakeCallTrigger(data);
       }
     });
