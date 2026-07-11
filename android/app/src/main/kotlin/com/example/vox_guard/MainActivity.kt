@@ -6,10 +6,15 @@ import android.view.WindowManager
 import android.os.Build
 import android.content.Intent
 import io.flutter.plugin.common.MethodChannel
+import android.app.NotificationManager
+import android.app.NotificationChannel
+import android.app.PendingIntent
+import androidx.core.app.NotificationCompat
 
 class MainActivity : FlutterActivity() {
     private val CHANNEL = "com.example.vox_guard/panic"
     private var pendingTriggerSos = false
+    private var pendingFakeCallData: Map<String, String>? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -35,6 +40,15 @@ class MainActivity : FlutterActivity() {
             if (call.method == "checkPendingTrigger") {
                 result.success(pendingTriggerSos)
                 pendingTriggerSos = false // Reset after checking
+            } else if (call.method == "checkPendingFakeCall") {
+                result.success(pendingFakeCallData)
+                pendingFakeCallData = null // Reset after checking
+            } else if (call.method == "showFakeCallNotification") {
+                val caller = call.argument<String>("caller") ?: "mom"
+                val ringtone = call.argument<String>("ringtone") ?: "ringtone_default"
+                val imgPath = call.argument<String>("imgPath") ?: "images/Woman.png"
+                showNativeNotification(caller, ringtone, imgPath)
+                result.success(true)
             } else {
                 result.notImplemented()
             }
@@ -53,6 +67,76 @@ class MainActivity : FlutterActivity() {
             flutterEngine?.dartExecutor?.binaryMessenger?.let { messenger ->
                 MethodChannel(messenger, CHANNEL).invokeMethod("triggerPanicSos", null)
             }
+        }
+        if (intent?.getBooleanExtra("trigger_fake_call", false) == true) {
+            val caller = intent.getStringExtra("caller") ?: "mom"
+            val ringtone = intent.getStringExtra("ringtone") ?: "ringtone_default"
+            val imgPath = intent.getStringExtra("imgPath") ?: "images/Woman.png"
+            
+            val data = mapOf(
+                "caller" to caller,
+                "ringtone" to ringtone,
+                "imgPath" to imgPath
+            )
+            pendingFakeCallData = data
+            // Invoke immediately if the engine is running
+            flutterEngine?.dartExecutor?.binaryMessenger?.let { messenger ->
+                MethodChannel(messenger, CHANNEL).invokeMethod("triggerFakeCallNow", data)
+            }
+        }
+    }
+
+    private fun showNativeNotification(caller: String, ringtone: String, imgPath: String) {
+        try {
+            val intent = Intent(this, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                putExtra("trigger_fake_call", true)
+                putExtra("caller", caller)
+                putExtra("ringtone", ringtone)
+                putExtra("imgPath", imgPath)
+            }
+            
+            val pendingIntentFlags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
+            } else {
+                PendingIntent.FLAG_UPDATE_CURRENT
+            }
+
+            val pendingIntent = PendingIntent.getActivity(
+                this,
+                999,
+                intent,
+                pendingIntentFlags
+            )
+
+            val channelId = "voxguard_fake_call"
+            val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val channel = NotificationChannel(
+                    channelId,
+                    "VoxGuard Fake Call",
+                    NotificationManager.IMPORTANCE_HIGH
+                ).apply {
+                    description = "This channel is used to trigger scheduled fake calls."
+                }
+                notificationManager.createNotificationChannel(channel)
+            }
+
+            val callerDisplayName = if (caller == "mom") "أمي (Mom)" else if (caller == "dad") "أبي (Dad)" else "الشرطة (Police)"
+
+            val builder = NotificationCompat.Builder(this, channelId)
+                .setSmallIcon(resources.getIdentifier("launcher_icon", "mipmap", packageName))
+                .setContentTitle("إتصال وارد (Incoming Call)")
+                .setContentText("اضغط للرد على $callerDisplayName")
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setCategory(NotificationCompat.CATEGORY_CALL)
+                .setFullScreenIntent(pendingIntent, true)
+                .setAutoCancel(true)
+
+            notificationManager.notify(999, builder.build())
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 }

@@ -236,25 +236,34 @@ class _VoxGuardAppState extends State<VoxGuardApp> {
       _panicChannel.setMethodCallHandler((call) async {
         if (call.method == 'triggerPanicSos') {
           _navigateToEmergency();
+        } else if (call.method == 'triggerFakeCallNow') {
+          if (call.arguments != null) {
+            final data = Map<String, dynamic>.from(call.arguments);
+            _handleFakeCallTrigger(data);
+          }
         }
       });
       _checkPendingTrigger();
+      _checkPendingFakeCall();
     }
 
     // Listen to background service event to trigger fake call on UI thread
     FlutterBackgroundService().on('triggerFakeCallNow').listen((event) async {
-      if (!_isNotificationsInitialized) {
-        debugPrint("Warning: triggerFakeCallNow received before notifications initialized");
-        return;
-      }
       if (event != null) {
         final data = Map<String, dynamic>.from(event);
-        String caller = data['caller'] ?? 'mom';
-        String ringtone = data['ringtone'] ?? 'ringtone_default';
-        String imgPath = data['imgPath'] ?? 'images/Woman.png';
+        final state = WidgetsBinding.instance.lifecycleState;
+        final bool isBackground = state == AppLifecycleState.paused || state == AppLifecycleState.inactive;
 
-        // Trigger the fake call screen immediately
-        _handleFakeCallTrigger(data);
+        if (isBackground && Platform.isAndroid) {
+          try {
+            await _panicChannel.invokeMethod('showFakeCallNotification', data);
+          } catch (e) {
+            debugPrint("Failed to show native local notification: $e");
+          }
+        } else {
+          // If in foreground, launch the screen directly
+          _handleFakeCallTrigger(data);
+        }
       }
     });
 
@@ -297,6 +306,19 @@ class _VoxGuardAppState extends State<VoxGuardApp> {
       }
     } catch (e) {
       debugPrint("Error checking pending trigger: $e");
+    }
+  }
+
+  Future<void> _checkPendingFakeCall() async {
+    if (!Platform.isAndroid) return;
+    try {
+      final res = await _panicChannel.invokeMethod('checkPendingFakeCall');
+      if (res != null) {
+        final data = Map<String, dynamic>.from(res);
+        _handleFakeCallTrigger(data);
+      }
+    } catch (e) {
+      debugPrint("Error checking pending fake call: $e");
     }
   }
 
