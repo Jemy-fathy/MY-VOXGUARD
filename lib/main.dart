@@ -283,18 +283,23 @@ class _VoxGuardAppState extends State<VoxGuardApp> {
 
         if (isBackground && Platform.isAndroid) {
           try {
-            await flutterLocalNotificationsPlugin.show(
-              999,
-              'إتصال وارد (Incoming Call)',
-              'اضغط للرد على $callerDisplayName',
-              platformDetails,
-              payload: jsonEncode({
-                'type': 'fake_call',
-                'caller': caller,
-                'ringtone': ringtone,
-                'imgPath': imgPath,
-              }),
-            );
+            final bool isPermissionGranted = await Permission.notification.isGranted;
+            if (isPermissionGranted) {
+              await flutterLocalNotificationsPlugin.show(
+                999,
+                'إتصال وارد (Incoming Call)',
+                'اضغط للرد على $callerDisplayName',
+                platformDetails,
+                payload: jsonEncode({
+                  'type': 'fake_call',
+                  'caller': caller,
+                  'ringtone': ringtone,
+                  'imgPath': imgPath,
+                }),
+              );
+            } else {
+              debugPrint("Notification permission not granted, skipping show.");
+            }
           } catch (e) {
             debugPrint("Failed to show local notification: $e");
           }
