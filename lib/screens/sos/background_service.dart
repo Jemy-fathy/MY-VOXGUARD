@@ -121,13 +121,6 @@ void onStart(ServiceInstance service) async {
       );
 
       final FlutterLocalNotificationsPlugin localNotifications = FlutterLocalNotificationsPlugin();
-      const initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/ic_launcher');
-      const initializationSettingsDarwin = DarwinInitializationSettings();
-      const initializationSettings = InitializationSettings(
-        android: initializationSettingsAndroid,
-        iOS: initializationSettingsDarwin,
-      );
-      await localNotifications.initialize(initializationSettings);
 
       String callerDisplayName = caller == 'mom' 
           ? 'أمي (Mom)' 
