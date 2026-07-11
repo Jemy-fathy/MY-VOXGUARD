@@ -143,60 +143,65 @@ void _handleFakeCallTrigger(Map<String, dynamic> data) {
 }
 
 Future<void> _setupNotifications() async {
-  const AndroidInitializationSettings initializationSettingsAndroid =
-      AndroidInitializationSettings('ic_launcher');
+  try {
+    const AndroidInitializationSettings initializationSettingsAndroid =
+        AndroidInitializationSettings('ic_launcher');
 
-  const DarwinInitializationSettings initializationSettingsDarwin =
-      DarwinInitializationSettings(
-    requestAlertPermission: true,
-    requestBadgePermission: true,
-    requestSoundPermission: true,
-  );
+    const DarwinInitializationSettings initializationSettingsDarwin =
+        DarwinInitializationSettings(
+      requestAlertPermission: true,
+      requestBadgePermission: true,
+      requestSoundPermission: true,
+    );
 
-  const InitializationSettings initializationSettings = InitializationSettings(
-    android: initializationSettingsAndroid,
-    iOS: initializationSettingsDarwin,
-  );
+    const InitializationSettings initializationSettings = InitializationSettings(
+      android: initializationSettingsAndroid,
+      iOS: initializationSettingsDarwin,
+    );
 
-  await flutterLocalNotificationsPlugin.initialize(
-    settings: initializationSettings,
-    onDidReceiveNotificationResponse: (NotificationResponse response) {
-      debugPrint("Notification clicked: ${response.payload}");
-      if (response.payload != null) {
-        try {
-          final data = jsonDecode(response.payload!);
-          if (data['type'] == 'fake_call') {
-            _handleFakeCallTrigger(Map<String, dynamic>.from(data));
+    await flutterLocalNotificationsPlugin.initialize(
+      settings: initializationSettings,
+      onDidReceiveNotificationResponse: (NotificationResponse response) {
+        debugPrint("Notification clicked: ${response.payload}");
+        if (response.payload != null) {
+          try {
+            final data = jsonDecode(response.payload!);
+            if (data['type'] == 'fake_call') {
+              _handleFakeCallTrigger(Map<String, dynamic>.from(data));
+            }
+          } catch (e) {
+            debugPrint("Error handling notification payload: $e");
           }
-        } catch (e) {
-          debugPrint("Error handling notification payload: $e");
         }
-      }
-    },
-  );
+      },
+    );
 
-  const AndroidNotificationChannel channel = AndroidNotificationChannel(
-    'voxguard_emergency',
-    'VoxGuard Emergency Service',
-    description: 'This channel is used for vital personal safety features.',
-    importance: Importance.high,
-  );
+    const AndroidNotificationChannel channel = AndroidNotificationChannel(
+      'voxguard_emergency',
+      'VoxGuard Emergency Service',
+      description: 'This channel is used for vital personal safety features.',
+      importance: Importance.high,
+    );
 
-  const AndroidNotificationChannel fakeCallChannel = AndroidNotificationChannel(
-    'voxguard_fake_call',
-    'VoxGuard Fake Call',
-    description: 'This channel is used to trigger scheduled fake calls.',
-    importance: Importance.high,
-  );
+    const AndroidNotificationChannel fakeCallChannel = AndroidNotificationChannel(
+      'voxguard_fake_call',
+      'VoxGuard Fake Call',
+      description: 'This channel is used to trigger scheduled fake calls.',
+      importance: Importance.high,
+    );
 
-  final androidNotificationPlugin = flutterLocalNotificationsPlugin
-      .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+    final androidNotificationPlugin = flutterLocalNotificationsPlugin
+        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
 
-  if (androidNotificationPlugin != null) {
-    await androidNotificationPlugin.createNotificationChannel(channel);
-    await androidNotificationPlugin.createNotificationChannel(fakeCallChannel);
+    if (androidNotificationPlugin != null) {
+      await androidNotificationPlugin.createNotificationChannel(channel);
+      await androidNotificationPlugin.createNotificationChannel(fakeCallChannel);
+    }
+    _isNotificationsInitialized = true;
+  } catch (e) {
+    debugPrint("Failed to initialize notifications: $e");
+    _isNotificationsInitialized = false;
   }
-  _isNotificationsInitialized = true;
 }
 
 Future<void> _startServiceSafely() async {
@@ -270,23 +275,18 @@ class _VoxGuardAppState extends State<VoxGuardApp> {
             : (caller == 'dad' ? 'أبي (Dad)' : 'الشرطة (Police)');
 
         try {
-          final bool isPermissionGranted = await Permission.notification.isGranted;
-          if (isPermissionGranted) {
-            await flutterLocalNotificationsPlugin.show(
-              999,
-              'إتصال وارد (Incoming Call)',
-              'اضغط للرد على $callerDisplayName',
-              platformDetails,
-              payload: jsonEncode({
-                'type': 'fake_call',
-                'caller': caller,
-                'ringtone': ringtone,
-                'imgPath': imgPath,
-              }),
-            );
-          } else {
-            debugPrint("Notification permission is not granted; skipping notification show.");
-          }
+          await flutterLocalNotificationsPlugin.show(
+            999,
+            'إتصال وارد (Incoming Call)',
+            'اضغط للرد على $callerDisplayName',
+            platformDetails,
+            payload: jsonEncode({
+              'type': 'fake_call',
+              'caller': caller,
+              'ringtone': ringtone,
+              'imgPath': imgPath,
+            }),
+          );
         } catch (e) {
           debugPrint("Failed to show local notification: $e");
         }
