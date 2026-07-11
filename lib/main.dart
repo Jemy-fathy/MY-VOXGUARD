@@ -251,6 +251,7 @@ class _VoxGuardAppState extends State<VoxGuardApp> {
           importance: Importance.max,
           priority: Priority.high,
           playSound: true,
+          icon: 'ic_launcher',
         );
 
         const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
@@ -269,18 +270,23 @@ class _VoxGuardAppState extends State<VoxGuardApp> {
             : (caller == 'dad' ? 'أبي (Dad)' : 'الشرطة (Police)');
 
         try {
-          await flutterLocalNotificationsPlugin.show(
-            999,
-            'إتصال وارد (Incoming Call)',
-            'اضغط للرد على $callerDisplayName',
-            platformDetails,
-            payload: jsonEncode({
-              'type': 'fake_call',
-              'caller': caller,
-              'ringtone': ringtone,
-              'imgPath': imgPath,
-            }),
-          );
+          final bool isPermissionGranted = await Permission.notification.isGranted;
+          if (isPermissionGranted) {
+            await flutterLocalNotificationsPlugin.show(
+              999,
+              'إتصال وارد (Incoming Call)',
+              'اضغط للرد على $callerDisplayName',
+              platformDetails,
+              payload: jsonEncode({
+                'type': 'fake_call',
+                'caller': caller,
+                'ringtone': ringtone,
+                'imgPath': imgPath,
+              }),
+            );
+          } else {
+            debugPrint("Notification permission is not granted; skipping notification show.");
+          }
         } catch (e) {
           debugPrint("Failed to show local notification: $e");
         }
