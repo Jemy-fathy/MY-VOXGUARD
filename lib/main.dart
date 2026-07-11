@@ -280,6 +280,9 @@ class _VoxGuardAppState extends State<VoxGuardApp> {
         final bool isBackground = state == AppLifecycleState.paused || state == AppLifecycleState.inactive;
 
         if (isBackground && Platform.isAndroid) {
+          // NOTE: localNotifications.show() is commented out to prevent VS Code debugger from pausing on uncaught exceptions
+          // when running without a clean native build. If you want background notifications, please rebuild the native app using: flutter run
+          /*
           try {
             await flutterLocalNotificationsPlugin.show(
               999,
@@ -296,6 +299,7 @@ class _VoxGuardAppState extends State<VoxGuardApp> {
           } catch (e) {
             debugPrint("Failed to show local notification: $e");
           }
+          */
         }
 
         // Trigger the fake call screen immediately so it functions even if notifications fail
