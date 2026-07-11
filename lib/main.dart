@@ -181,9 +181,20 @@ Future<void> _setupNotifications() async {
     importance: Importance.high,
   );
 
-  await flutterLocalNotificationsPlugin
-      .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
-      ?.createNotificationChannel(channel);
+  const AndroidNotificationChannel fakeCallChannel = AndroidNotificationChannel(
+    'voxguard_fake_call',
+    'VoxGuard Fake Call',
+    description: 'This channel is used to trigger scheduled fake calls.',
+    importance: Importance.high,
+  );
+
+  final androidNotificationPlugin = flutterLocalNotificationsPlugin
+      .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+
+  if (androidNotificationPlugin != null) {
+    await androidNotificationPlugin.createNotificationChannel(channel);
+    await androidNotificationPlugin.createNotificationChannel(fakeCallChannel);
+  }
 }
 
 Future<void> _startServiceSafely() async {
@@ -233,16 +244,13 @@ class _VoxGuardAppState extends State<VoxGuardApp> {
           channelDescription: 'This channel is used to trigger scheduled fake calls.',
           importance: Importance.max,
           priority: Priority.high,
-          fullScreenIntent: true,
           playSound: true,
-          category: AndroidNotificationCategory.call,
         );
 
         const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
           presentAlert: true,
           presentBadge: true,
           presentSound: true,
-          categoryIdentifier: 'fake_call_category',
         );
 
         const NotificationDetails platformDetails = NotificationDetails(
