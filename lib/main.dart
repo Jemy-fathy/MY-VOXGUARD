@@ -34,6 +34,7 @@ import 'config/api_config.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+bool _isNotificationsInitialized = false;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -44,8 +45,8 @@ void main() async {
 
   WidgetsBinding.instance.addObserver(AppLifecycleReactor());
 
-  // Run these in the background to avoid blocking the first frame render
-  _setupNotifications();
+  // Initialize notifications synchronously to prevent early background events from calling .show() before initialization completes
+  await _setupNotifications();
   _startServiceSafely();
 
   runApp(
@@ -195,6 +196,7 @@ Future<void> _setupNotifications() async {
     await androidNotificationPlugin.createNotificationChannel(channel);
     await androidNotificationPlugin.createNotificationChannel(fakeCallChannel);
   }
+  _isNotificationsInitialized = true;
 }
 
 Future<void> _startServiceSafely() async {
@@ -232,6 +234,10 @@ class _VoxGuardAppState extends State<VoxGuardApp> {
 
     // Listen to background service event to trigger fake call on UI thread
     FlutterBackgroundService().on('triggerFakeCallNow').listen((event) async {
+      if (!_isNotificationsInitialized) {
+        debugPrint("Warning: triggerFakeCallNow received before notifications initialized");
+        return;
+      }
       if (event != null) {
         final data = Map<String, dynamic>.from(event);
         String caller = data['caller'] ?? 'mom';
