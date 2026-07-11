@@ -220,9 +220,56 @@ class _VoxGuardAppState extends State<VoxGuardApp> {
     _checkPendingTrigger();
 
     // Listen to background service event to trigger fake call on UI thread
-    FlutterBackgroundService().on('triggerFakeCallNow').listen((event) {
+    FlutterBackgroundService().on('triggerFakeCallNow').listen((event) async {
       if (event != null) {
-        _handleFakeCallTrigger(Map<String, dynamic>.from(event));
+        final data = Map<String, dynamic>.from(event);
+        String caller = data['caller'] ?? 'mom';
+        String ringtone = data['ringtone'] ?? 'ringtone_default';
+        String imgPath = data['imgPath'] ?? 'images/Woman.png';
+
+        const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+          'voxguard_fake_call',
+          'VoxGuard Fake Call',
+          channelDescription: 'This channel is used to trigger scheduled fake calls.',
+          importance: Importance.max,
+          priority: Priority.high,
+          fullScreenIntent: true,
+          playSound: true,
+          category: AndroidNotificationCategory.call,
+        );
+
+        const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+          categoryIdentifier: 'fake_call_category',
+        );
+
+        const NotificationDetails platformDetails = NotificationDetails(
+          android: androidDetails,
+          iOS: iosDetails,
+        );
+
+        String callerDisplayName = caller == 'mom' 
+            ? 'أمي (Mom)' 
+            : (caller == 'dad' ? 'أبي (Dad)' : 'الشرطة (Police)');
+
+        await flutterLocalNotificationsPlugin.show(
+          999,
+          'إتصال وارد (Incoming Call)',
+          'اضغط للرد على $callerDisplayName',
+          platformDetails,
+          payload: jsonEncode({
+            'type': 'fake_call',
+            'caller': caller,
+            'ringtone': ringtone,
+            'imgPath': imgPath,
+          }),
+        );
+
+        if (WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed) {
+          _handleFakeCallTrigger(data);
+        }
       }
     });
 

@@ -89,55 +89,12 @@ void onStart(ServiceInstance service) async {
     String imgPath = event['imgPath'] ?? 'images/Woman.png';
 
     Timer(Duration(seconds: seconds), () async {
-      // 1. Send event back to main UI thread in case the app is running
+      // Send event back to main UI thread
       service.invoke('triggerFakeCallNow', {
         'caller': caller,
         'ringtone': ringtone,
         'imgPath': imgPath,
       });
-
-      // 2. Show a local notification to wake up the screen and let the user tap to open the fake call
-      const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-        'voxguard_fake_call',
-        'VoxGuard Fake Call',
-        channelDescription: 'This channel is used to trigger scheduled fake calls.',
-        importance: Importance.max,
-        priority: Priority.high,
-        fullScreenIntent: true,
-        playSound: true,
-        category: AndroidNotificationCategory.call,
-      );
-
-      const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
-        presentAlert: true,
-        presentBadge: true,
-        presentSound: true,
-        categoryIdentifier: 'fake_call_category',
-      );
-
-      const NotificationDetails platformDetails = NotificationDetails(
-        android: androidDetails,
-        iOS: iosDetails,
-      );
-
-      final FlutterLocalNotificationsPlugin localNotifications = FlutterLocalNotificationsPlugin();
-
-      String callerDisplayName = caller == 'mom' 
-          ? 'أمي (Mom)' 
-          : (caller == 'dad' ? 'أبي (Dad)' : 'الشرطة (Police)');
-
-      await localNotifications.show(
-        999,
-        'إتصال وارد (Incoming Call)',
-        'اضغط للرد على $callerDisplayName',
-        platformDetails,
-        payload: jsonEncode({
-          'type': 'fake_call',
-          'caller': caller,
-          'ringtone': ringtone,
-          'imgPath': imgPath,
-        }),
-      );
     });
   });
 
