@@ -144,7 +144,7 @@ void _handleFakeCallTrigger(Map<String, dynamic> data) {
 
 Future<void> _setupNotifications() async {
   const AndroidInitializationSettings initializationSettingsAndroid =
-      AndroidInitializationSettings('@mipmap/ic_launcher');
+      AndroidInitializationSettings('ic_launcher');
 
   const DarwinInitializationSettings initializationSettingsDarwin =
       DarwinInitializationSettings(
