@@ -276,7 +276,8 @@ class _VoxGuardAppState extends State<VoxGuardApp> {
             ? 'أمي (Mom)' 
             : (caller == 'dad' ? 'أبي (Dad)' : 'الشرطة (Police)');
 
-        final bool isBackground = WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed;
+        final state = WidgetsBinding.instance.lifecycleState;
+        final bool isBackground = state == AppLifecycleState.paused || state == AppLifecycleState.inactive;
 
         if (isBackground && Platform.isAndroid) {
           try {
