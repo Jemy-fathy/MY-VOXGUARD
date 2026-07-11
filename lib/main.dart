@@ -230,12 +230,14 @@ class _VoxGuardAppState extends State<VoxGuardApp> {
   @override
   void initState() {
     super.initState();
-    _panicChannel.setMethodCallHandler((call) async {
-      if (call.method == 'triggerPanicSos') {
-        _navigateToEmergency();
-      }
-    });
-    _checkPendingTrigger();
+    if (Platform.isAndroid) {
+      _panicChannel.setMethodCallHandler((call) async {
+        if (call.method == 'triggerPanicSos') {
+          _navigateToEmergency();
+        }
+      });
+      _checkPendingTrigger();
+    }
 
     // Listen to background service event to trigger fake call on UI thread
     FlutterBackgroundService().on('triggerFakeCallNow').listen((event) async {
@@ -327,6 +329,7 @@ class _VoxGuardAppState extends State<VoxGuardApp> {
   }
 
   Future<void> _checkPendingTrigger() async {
+    if (!Platform.isAndroid) return;
     try {
       final bool hasPending = await _panicChannel.invokeMethod('checkPendingTrigger') ?? false;
       if (hasPending) {
