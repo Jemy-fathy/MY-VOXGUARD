@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 import 'package:flutter/material.dart';
@@ -281,7 +282,7 @@ class _VoxGuardAppState extends State<VoxGuardApp> {
         final state = WidgetsBinding.instance.lifecycleState;
         final bool isBackground = state == AppLifecycleState.paused || state == AppLifecycleState.inactive;
 
-        if (isBackground && Platform.isAndroid) {
+        if (isBackground && Platform.isAndroid && !kDebugMode) {
           try {
             final bool isPermissionGranted = await Permission.notification.isGranted;
             if (isPermissionGranted) {
