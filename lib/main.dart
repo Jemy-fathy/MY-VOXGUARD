@@ -268,22 +268,25 @@ class _VoxGuardAppState extends State<VoxGuardApp> {
             ? 'أمي (Mom)' 
             : (caller == 'dad' ? 'أبي (Dad)' : 'الشرطة (Police)');
 
-        await flutterLocalNotificationsPlugin.show(
-          999,
-          'إتصال وارد (Incoming Call)',
-          'اضغط للرد على $callerDisplayName',
-          platformDetails,
-          payload: jsonEncode({
-            'type': 'fake_call',
-            'caller': caller,
-            'ringtone': ringtone,
-            'imgPath': imgPath,
-          }),
-        );
-
-        if (WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed) {
-          _handleFakeCallTrigger(data);
+        try {
+          await flutterLocalNotificationsPlugin.show(
+            999,
+            'إتصال وارد (Incoming Call)',
+            'اضغط للرد على $callerDisplayName',
+            platformDetails,
+            payload: jsonEncode({
+              'type': 'fake_call',
+              'caller': caller,
+              'ringtone': ringtone,
+              'imgPath': imgPath,
+            }),
+          );
+        } catch (e) {
+          debugPrint("Failed to show local notification: $e");
         }
+
+        // Trigger the fake call screen immediately so it functions even if notifications fail
+        _handleFakeCallTrigger(data);
       }
     });
 
