@@ -36,6 +36,7 @@ import 'config/api_config.dart';
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 bool _isNotificationsInitialized = false;
+const bool _enableBackgroundNotification = false; // Set to true to test locked-screen call wake (requires fresh build)
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -282,7 +283,7 @@ class _VoxGuardAppState extends State<VoxGuardApp> {
         final state = WidgetsBinding.instance.lifecycleState;
         final bool isBackground = state == AppLifecycleState.paused || state == AppLifecycleState.inactive;
 
-        if (isBackground && Platform.isAndroid && !kDebugMode) {
+        if (isBackground && Platform.isAndroid && _enableBackgroundNotification) {
           try {
             final bool isPermissionGranted = await Permission.notification.isGranted;
             if (isPermissionGranted) {
