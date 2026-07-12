@@ -178,6 +178,7 @@ Future<void> runAiMonitorLoop(ServiceInstance service) async {
       Position pos = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.low);
       
       bool isSafe = await isInsideSafeZone(pos.latitude, pos.longitude);
+
    
       await checkDangerZoneStatus(pos);
 
@@ -227,9 +228,9 @@ Future<void> runAiMonitorLoop(ServiceInstance service) async {
           continue;
         }
 
-        // If user is inside a Safe Zone, skip general dictionary/emotion monitoring to save battery and protect privacy
+        // If it's not the voice phrase and we are in a safe zone, skip any further dictionary or emotion checks
         if (isSafe) {
-          debugPrint('[AI-MONITOR] User is in a Safe Zone. Skipping dictionary and emotion checks.');
+          debugPrint('[AI-MONITOR] User is in a Safe Zone. Skipping regular dictionary/emotion checks.');
           if (await File(tempPath).exists()) await File(tempPath).delete();
           continue;
         }
