@@ -52,6 +52,12 @@ class _StartTripScreenState extends State<StartTripScreen> {
     int timeInMinutes = (timeInHours * 60).round();
     
     if (timeInMinutes < 10) timeInMinutes = 10;
+    
+    // Cap travel time to a maximum of 3 hours (180 minutes) to prevent 3-digit hour overflows (e.g. 148, 150) during testing
+    if (timeInMinutes > 180) {
+      timeInMinutes = 180;
+    }
+    
     return timeInMinutes;
   }
 
