@@ -49,6 +49,9 @@ class MainActivity : FlutterActivity() {
                 val imgPath = call.argument<String>("imgPath") ?: "images/Woman.png"
                 showNativeNotification(caller, ringtone, imgPath)
                 result.success(true)
+            } else if (call.method == "showSosNotification") {
+                showNativeSosNotification()
+                result.success(true)
             } else {
                 result.notImplemented()
             }
@@ -135,6 +138,55 @@ class MainActivity : FlutterActivity() {
                 .setAutoCancel(true)
 
             notificationManager.notify(999, builder.build())
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    private fun showNativeSosNotification() {
+        try {
+            val intent = Intent(this, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                putExtra("trigger_sos", true)
+            }
+            
+            val pendingIntentFlags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
+            } else {
+                PendingIntent.FLAG_UPDATE_CURRENT
+            }
+
+            val pendingIntent = PendingIntent.getActivity(
+                this,
+                888,
+                intent,
+                pendingIntentFlags
+            )
+
+            val channelId = "voxguard_emergency"
+            val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val channel = NotificationChannel(
+                    channelId,
+                    "VoxGuard Emergency",
+                    NotificationManager.IMPORTANCE_HIGH
+                ).apply {
+                    description = "This channel is used to trigger background emergency screens."
+                }
+                notificationManager.createNotificationChannel(channel)
+            }
+
+            val builder = NotificationCompat.Builder(this, channelId)
+                .setSmallIcon(resources.getIdentifier("launcher_icon", "mipmap", packageName))
+                .setContentTitle("تنبيه أمان (VoxGuard SOS)")
+                .setContentText("جاري تشغيل وضع الاستغاثة والطوارئ...")
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setCategory(NotificationCompat.CATEGORY_CALL)
+                .setFullScreenIntent(pendingIntent, true)
+                .setAutoCancel(true)
+
+            notificationManager.notify(888, builder.build())
         } catch (e: Exception) {
             e.printStackTrace()
         }

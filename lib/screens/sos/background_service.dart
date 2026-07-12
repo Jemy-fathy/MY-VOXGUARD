@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:ui';
+import 'package:flutter/services.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:geolocator/geolocator.dart';
@@ -109,6 +110,15 @@ Future<void> triggerSos(
   final prefs = await SharedPreferences.getInstance();
   await prefs.setBool('sos_active', true);
   await prefs.setBool('should_show_sos_screen', true);
+
+  if (Platform.isAndroid) {
+    try {
+      const panicChannel = MethodChannel('com.example.vox_guard/panic');
+      await panicChannel.invokeMethod('showSosNotification');
+    } catch (e) {
+      debugPrint('Failed to show native SOS notification: $e');
+    }
+  }
 
   await _log('🚨 SOS Triggered! Manual: $isManual, Emotion: $emotion');
 
