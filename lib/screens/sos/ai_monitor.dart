@@ -197,27 +197,81 @@ Future<void> runAiMonitorLoop(ServiceInstance service) async {
       await Future.delayed(const Duration(seconds: 10));
       await recorder.stop();
 
-      bool isDanger = await screenForDanger(tempPath, locationText: "${pos.latitude},${pos.longitude}");
+      // Transcribe recorded audio
+      String transcribedText = '';
+      try {
+        final sttReq = http.MultipartRequest('POST', Uri.parse(ApiConfig.sttUrl));
+        sttReq.files.add(await http.MultipartFile.fromPath('audio', tempPath));
+        final sttResp = await http.Response.fromStream(await sttReq.send());
+        if (sttResp.statusCode == 200) {
+          transcribedText = jsonDecode(sttResp.body)['text']?.toString() ?? '';
+        }
+      } catch (e) {
+        debugPrint('[AI-MONITOR] STT Error in Loop: $e');
+      }
 
-      if (isDanger) {
-        final String fullRecordPath = '${tempDir.path}/evidence_full.wav';
-        await recorder.start(const RecordConfig(encoder: AudioEncoder.wav, sampleRate: 16000), path: fullRecordPath);
-        await Future.delayed(const Duration(minutes: 1)); 
-        await recorder.stop();
-
-        String? emotionResult = await confirmEmotion(fullRecordPath);
-
-        if (emotionResult != null) {
+      if (transcribedText.isNotEmpty && transcribedText != 'null') {
+        final String savedPhrase = prefs.getString('voice_phrase') ?? '';
+        if (savedPhrase.isNotEmpty && transcribedText.toLowerCase().contains(savedPhrase.toLowerCase())) {
+          debugPrint('[AI-MONITOR] 🚨 Voice phrase "$savedPhrase" detected! Triggering SOS immediately!');
+          
           final appDir = await getApplicationDocumentsDirectory();
-          final String savedPath = '${appDir.path}/SOS_${DateTime.now().millisecondsSinceEpoch}.wav';
-          await File(fullRecordPath).copy(savedPath);
+          final String savedPath = '${appDir.path}/SOS_phrase_${DateTime.now().millisecondsSinceEpoch}.wav';
+          await File(tempPath).copy(savedPath);
 
-         await triggerSos(
-          isManual: false,
-          reason: "AI Detected Danger: $emotionResult", 
-         emotion: emotionResult, 
-         evidencePath: savedPath,
+          await triggerSos(
+            isManual: false,
+            reason: "Voice Phrase Detected: $savedPhrase",
+            evidencePath: savedPath,
           );
+          
+          if (await File(tempPath).exists()) await File(tempPath).delete();
+          continue;
+        }
+
+        // Fallback to regular dictionary check if voice phrase not found
+        bool isDanger = false;
+        try {
+          final String? token = prefs.getString('auth_token');
+          final dangerResp = await http.post(
+            Uri.parse(ApiConfig.dictionaryCheckUrl),
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: {
+              'text': transcribedText,
+              'location_text': "${pos.latitude},${pos.longitude}",
+              'latitude': '0',
+              'longitude': '0'
+            },
+          );
+          final data = jsonDecode(dangerResp.body);
+          isDanger = dangerResp.statusCode == 200 && data['danger_detected'] == true;
+        } catch (e) {
+          debugPrint('[AI-MONITOR] Dictionary check error: $e');
+        }
+
+        if (isDanger) {
+          final String fullRecordPath = '${tempDir.path}/evidence_full.wav';
+          await recorder.start(const RecordConfig(encoder: AudioEncoder.wav, sampleRate: 16000), path: fullRecordPath);
+          await Future.delayed(const Duration(minutes: 1)); 
+          await recorder.stop();
+
+          String? emotionResult = await confirmEmotion(fullRecordPath);
+
+          if (emotionResult != null) {
+            final appDir = await getApplicationDocumentsDirectory();
+            final String savedPath = '${appDir.path}/SOS_${DateTime.now().millisecondsSinceEpoch}.wav';
+            await File(fullRecordPath).copy(savedPath);
+
+            await triggerSos(
+              isManual: false,
+              reason: "AI Detected Danger: $emotionResult", 
+              emotion: emotionResult, 
+              evidencePath: savedPath,
+            );
+          }
         }
       }
       
