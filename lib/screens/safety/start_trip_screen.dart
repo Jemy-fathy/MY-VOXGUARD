@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:ui' as ui;
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
 import 'package:easy_localization/easy_localization.dart';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -28,6 +29,31 @@ class _StartTripScreenState extends State<StartTripScreen> {
   double? selectedLatitude;
   double? selectedLongitude;
   bool _showSuggestions = false;
+
+  double _calculateDistance(double lat1, double lon1, double lat2, double lon2) {
+    const p = 0.017453292519943295;
+    final a = 0.5 - math.cos((lat2 - lat1) * p)/2 + 
+          math.cos(lat1 * p) * math.cos(lat2 * p) * 
+          (1 - math.cos((lon2 - lon1) * p))/2;
+    return 12742 * math.asin(math.sqrt(a)); // 2 * R; R = 6371 km
+  }
+
+  int _calculateEstimatedTime(double startLat, double startLng, double endLat, double endLng) {
+    double distanceInKm = _calculateDistance(startLat, startLng, endLat, endLng);
+    
+    double averageSpeedKmh = 50.0;
+    if (distanceInKm > 50) {
+      averageSpeedKmh = 80.0; // highway speed
+    } else if (distanceInKm < 5) {
+      averageSpeedKmh = 25.0; // local city traffic
+    }
+    
+    double timeInHours = distanceInKm / averageSpeedKmh;
+    int timeInMinutes = (timeInHours * 60).round();
+    
+    if (timeInMinutes < 10) timeInMinutes = 10;
+    return timeInMinutes;
+  }
 
   @override
   void initState() {
@@ -208,17 +234,28 @@ class _StartTripScreenState extends State<StartTripScreen> {
       double lat = selectedLatitude ?? 30.0444;
       double long = selectedLongitude ?? 31.2357;
 
+      double currentLat = 31.0409; // Default starting location (Mansoura)
+      double currentLong = 31.3785;
+      
+      try {
+        Position position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high,
+          timeLimit: const Duration(seconds: 5),
+        );
+        currentLat = position.latitude;
+        currentLong = position.longitude;
+      } catch (_) {
+        // Fallback to defaults
+      }
+
       if (selectedLatitude == null || selectedLongitude == null) {
-        try {
-          Position position = await Geolocator.getCurrentPosition(
-            desiredAccuracy: LocationAccuracy.high,
-            timeLimit: const Duration(seconds: 5),
-          );
-          lat = position.latitude;
-          long = position.longitude;
-        } catch (_) {
-          // Fallback to defaults
-        }
+        lat = currentLat;
+        long = currentLong;
+      }
+
+      int estimatedTimeMinutes = 30; // Default fallback
+      if (selectedLatitude != null && selectedLongitude != null) {
+        estimatedTimeMinutes = _calculateEstimatedTime(currentLat, currentLong, lat, long);
       }
 
       final dio = Dio();
@@ -234,7 +271,7 @@ class _StartTripScreenState extends State<StartTripScreen> {
           "destination_name": destination,
           "destination_lat": lat,
           "destination_long": long,
-          "estimated_time": 30,
+          "estimated_time": estimatedTimeMinutes,
           "trusted_contact_id": selectedContactId,
           "safety_notes": null,
         },
@@ -243,6 +280,7 @@ class _StartTripScreenState extends State<StartTripScreen> {
       if (response.statusCode == 200 || response.statusCode == 201) {
         final tripData = response.data['data'];
         final int tripId = tripData['id'];
+        final int serverEstimatedTime = int.tryParse(tripData['estimated_time']?.toString() ?? '') ?? estimatedTimeMinutes;
 
         // Save trip started and location shared timestamps
         try {
@@ -261,7 +299,10 @@ class _StartTripScreenState extends State<StartTripScreen> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => LiveLocationScreen(tripId: tripId),
+            builder: (context) => LiveLocationScreen(
+              tripId: tripId,
+              estimatedTimeMinutes: serverEstimatedTime,
+            ),
           ),
         );
       } else {

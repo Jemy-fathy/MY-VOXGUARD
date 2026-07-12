@@ -12,7 +12,8 @@ import 'confirm_tracking_screen.dart';
 
 class LiveLocationScreen extends StatefulWidget {
   final int? tripId;
-  const LiveLocationScreen({super.key, this.tripId});
+  final int? estimatedTimeMinutes;
+  const LiveLocationScreen({super.key, this.tripId, this.estimatedTimeMinutes});
 
   @override
   State<LiveLocationScreen> createState() => _LiveLocationScreenState();
@@ -24,7 +25,7 @@ class _LiveLocationScreenState extends State<LiveLocationScreen> {
 
   Timer? _timer;
   Timer? _locationTimer;
-  int _secondsRemaining = 15 * 60; // 15 minutes countdown
+  int _secondsRemaining = 15 * 60; // 15 minutes countdown default fallback
 
   final TextEditingController _safetyNotesController = TextEditingController();
 
@@ -34,6 +35,9 @@ class _LiveLocationScreenState extends State<LiveLocationScreen> {
   @override
   void initState() {
     super.initState();
+    if (widget.estimatedTimeMinutes != null) {
+      _secondsRemaining = widget.estimatedTimeMinutes! * 60;
+    }
     _saveLocationTime();
     _startTimer();
     _startLocationUpdates();
