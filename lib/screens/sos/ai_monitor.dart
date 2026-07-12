@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -213,17 +214,20 @@ Future<void> runAiMonitorLoop(ServiceInstance service) async {
       if (transcribedText.isNotEmpty && transcribedText != 'null') {
         final String savedPhrase = prefs.getString('voice_phrase') ?? '';
         if (savedPhrase.isNotEmpty && transcribedText.toLowerCase().contains(savedPhrase.toLowerCase())) {
-          debugPrint('[AI-MONITOR] 🚨 Voice phrase "$savedPhrase" detected! Triggering SOS immediately!');
+          debugPrint('[AI-MONITOR] 🚨 Voice phrase "$savedPhrase" detected! Waking screen and launching Emergency Screen...');
           
           final appDir = await getApplicationDocumentsDirectory();
           final String savedPath = '${appDir.path}/SOS_phrase_${DateTime.now().millisecondsSinceEpoch}.wav';
           await File(tempPath).copy(savedPath);
 
-          await triggerSos(
-            isManual: false,
-            reason: "Voice Phrase Detected: $savedPhrase",
-            evidencePath: savedPath,
-          );
+          if (Platform.isAndroid) {
+            try {
+              const panicChannel = MethodChannel('com.example.vox_guard/panic');
+              await panicChannel.invokeMethod('showSosNotification');
+            } catch (e) {
+              debugPrint('Failed to show native SOS notification: $e');
+            }
+          }
           
           if (await File(tempPath).exists()) await File(tempPath).delete();
           continue;
