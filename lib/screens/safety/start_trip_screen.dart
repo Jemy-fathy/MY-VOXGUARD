@@ -237,9 +237,6 @@ class _StartTripScreenState extends State<StartTripScreen> {
       final prefs = await SharedPreferences.getInstance();
       final String? token = prefs.getString('token') ?? prefs.getString('auth_token');
 
-      double lat = selectedLatitude ?? 30.0444;
-      double long = selectedLongitude ?? 31.2357;
-
       double currentLat = 31.0409; // Default starting location (Mansoura)
       double currentLong = 31.3785;
       
@@ -254,10 +251,30 @@ class _StartTripScreenState extends State<StartTripScreen> {
         // Fallback to defaults
       }
 
+      // If user typed the name but didn't tap the suggestion list, try to resolve the zone coordinates from the text!
       if (selectedLatitude == null || selectedLongitude == null) {
-        lat = currentLat;
-        long = currentLong;
+        final query = destination.trim().toLowerCase();
+        dynamic matchedZone;
+        try {
+          matchedZone = zones.firstWhere((zone) {
+            final String englishName = (zone['name'] ?? '').toString().toLowerCase();
+            final String arabicName = _getLocalizedZoneName(englishName).toLowerCase();
+            return englishName == query || arabicName == query || 
+                   englishName.contains(query) || query.contains(englishName) ||
+                   arabicName.contains(query) || query.contains(arabicName);
+          });
+        } catch (_) {
+          // No match found
+        }
+
+        if (matchedZone != null) {
+          selectedLatitude = double.tryParse(matchedZone['latitude'].toString());
+          selectedLongitude = double.tryParse(matchedZone['longitude'].toString());
+        }
       }
+
+      double lat = selectedLatitude ?? currentLat;
+      double long = selectedLongitude ?? currentLong;
 
       int estimatedTimeMinutes = 30; // Default fallback
       if (selectedLatitude != null && selectedLongitude != null) {
