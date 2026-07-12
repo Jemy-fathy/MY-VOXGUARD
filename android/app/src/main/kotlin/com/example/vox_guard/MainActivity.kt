@@ -18,18 +18,6 @@ class MainActivity : FlutterActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
-            setShowWhenLocked(true)
-            setTurnScreenOn(true)
-        } else {
-            window.addFlags(
-                WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
-                WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or
-                WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
-            )
-        }
-
         handleIntent(intent)
     }
 
@@ -64,14 +52,21 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun handleIntent(intent: Intent?) {
-        if (intent?.getBooleanExtra("trigger_sos", false) == true) {
+        val isSosTrigger = intent?.getBooleanExtra("trigger_sos", false) == true
+        val isFakeCallTrigger = intent?.getBooleanExtra("trigger_fake_call", false) == true
+
+        if (isSosTrigger || isFakeCallTrigger) {
+            setDismissKeyguardNative(true)
+        }
+
+        if (isSosTrigger) {
             pendingTriggerSos = true
             // Invoke immediately if the engine is running
             flutterEngine?.dartExecutor?.binaryMessenger?.let { messenger ->
                 MethodChannel(messenger, CHANNEL).invokeMethod("triggerPanicSos", null)
             }
         }
-        if (intent?.getBooleanExtra("trigger_fake_call", false) == true) {
+        if (isFakeCallTrigger) {
             val caller = intent.getStringExtra("caller") ?: "mom"
             val ringtone = intent.getStringExtra("ringtone") ?: "ringtone_default"
             val imgPath = intent.getStringExtra("imgPath") ?: "images/Woman.png"
@@ -189,6 +184,27 @@ class MainActivity : FlutterActivity() {
             notificationManager.notify(888, builder.build())
         } catch (e: Exception) {
             e.printStackTrace()
+        }
+    }
+
+    private fun setDismissKeyguardNative(dismiss: Boolean) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            setShowWhenLocked(dismiss)
+            setTurnScreenOn(dismiss)
+        } else {
+            if (dismiss) {
+                window.addFlags(
+                    WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
+                    WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or
+                    WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
+                )
+            } else {
+                window.clearFlags(
+                    WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
+                    WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or
+                    WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
+                )
+            }
         }
     }
 }

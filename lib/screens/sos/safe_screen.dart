@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'dart:io';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:http/http.dart' as http;
@@ -164,6 +165,9 @@ void didChangeDependencies() {
   @override
   void dispose() {
     _waveController.dispose();
+    if (Platform.isAndroid) {
+      const MethodChannel('com.example.vox_guard/panic').invokeMethod('setDismissKeyguard', {'dismiss': false});
+    }
     super.dispose();
   }
 

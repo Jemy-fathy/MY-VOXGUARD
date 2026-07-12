@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:path_provider/path_provider.dart';
@@ -125,6 +126,9 @@ class _IncomingFakeCallDadState extends State<IncomingFakeCallDad> {
     _callTimer?.cancel();
     _audioPlayer.stop();
     _audioPlayer.dispose();
+    if (Platform.isAndroid) {
+      const MethodChannel('com.example.vox_guard/panic').invokeMethod('setDismissKeyguard', {'dismiss': false});
+    }
     super.dispose();
   }
 

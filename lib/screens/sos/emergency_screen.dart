@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'dart:ui' as ui;
 import '../../config/colors.dart';
@@ -39,6 +40,9 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
   @override
   void dispose() {
     _countdownTimer?.cancel();
+    if (Platform.isAndroid) {
+      const MethodChannel('com.example.vox_guard/panic').invokeMethod('setDismissKeyguard', {'dismiss': false});
+    }
     super.dispose();
   }
 
