@@ -178,12 +178,6 @@ Future<void> runAiMonitorLoop(ServiceInstance service) async {
       Position pos = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.low);
       
       bool isSafe = await isInsideSafeZone(pos.latitude, pos.longitude);
-      if (isSafe) {
-        debugPrint('[AI-MONITOR] User is in a Safe Zone. AI Monitor FORCED OFF.');
-        await Future.delayed(const Duration(seconds: 30)); 
-        continue;
-      }
-
    
       await checkDangerZoneStatus(pos);
 
@@ -229,6 +223,13 @@ Future<void> runAiMonitorLoop(ServiceInstance service) async {
             }
           }
           
+          if (await File(tempPath).exists()) await File(tempPath).delete();
+          continue;
+        }
+
+        // If user is inside a Safe Zone, skip general dictionary/emotion monitoring to save battery and protect privacy
+        if (isSafe) {
+          debugPrint('[AI-MONITOR] User is in a Safe Zone. Skipping dictionary and emotion checks.');
           if (await File(tempPath).exists()) await File(tempPath).delete();
           continue;
         }
