@@ -66,6 +66,7 @@ class AppLifecycleReactor extends WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) async {
     if (state == AppLifecycleState.resumed) {
+      _startServiceSafely();
       try {
         final prefs = await SharedPreferences.getInstance();
         bool isSosActive = prefs.getBool('sos_active') ?? false;
