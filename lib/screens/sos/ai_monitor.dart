@@ -175,7 +175,29 @@ Future<void> runAiMonitorLoop(ServiceInstance service) async {
       final prefs = await SharedPreferences.getInstance();
       await prefs.reload();
 
-      Position pos = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.low);
+      Position? pos;
+      try {
+        pos = await Geolocator.getLastKnownPosition();
+        pos ??= await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.low,
+          timeLimit: const Duration(seconds: 3),
+        );
+      } catch (e) {
+        debugPrint('[AI-MONITOR] Location fetch error, using fallback: $e');
+      }
+
+      pos ??= Position(
+        latitude: 31.0409,
+        longitude: 31.3785,
+        timestamp: DateTime.now(),
+        accuracy: 0.0,
+        altitude: 0.0,
+        altitudeAccuracy: 0.0,
+        heading: 0.0,
+        headingAccuracy: 0.0,
+        speed: 0.0,
+        speedAccuracy: 0.0,
+      );
       
       bool isSafe = await isInsideSafeZone(pos.latitude, pos.longitude);
 
@@ -198,7 +220,8 @@ Future<void> runAiMonitorLoop(ServiceInstance service) async {
       try {
         final sttReq = http.MultipartRequest('POST', Uri.parse(ApiConfig.sttUrl));
         sttReq.files.add(await http.MultipartFile.fromPath('audio', tempPath));
-        final sttResp = await http.Response.fromStream(await sttReq.send());
+        final sttStream = await sttReq.send().timeout(const Duration(seconds: 5));
+        final sttResp = await http.Response.fromStream(sttStream);
         if (sttResp.statusCode == 200) {
           transcribedText = jsonDecode(sttResp.body)['text']?.toString() ?? '';
         }
