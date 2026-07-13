@@ -42,8 +42,8 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await EasyLocalization.ensureInitialized();
 
-  // Auto-discover the Laravel backend server on the local network subnet
-  await ApiConfig.autoDiscoverServer();
+  // Auto-discover the Laravel backend server on the local network subnet (async background)
+  ApiConfig.autoDiscoverServer();
 
   WidgetsBinding.instance.addObserver(AppLifecycleReactor());
 

@@ -46,7 +46,6 @@ class ApiConfig {
       }
     } catch (_) {}
 
-    // 3. Try fallback Mac IP (192.168.1.29)
     try {
       final client = HttpClient();
       client.connectionTimeout = const Duration(milliseconds: 300);

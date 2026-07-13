@@ -119,7 +119,10 @@ class _AddContactScreenState extends State<AddContactScreen> {
         ));
       }
 
-      var dio = Dio();
+      var dio = Dio(BaseOptions(
+        connectTimeout: const Duration(seconds: 5),
+        receiveTimeout: const Duration(seconds: 5),
+      ));
       var response = await dio.post(
         apiUrl,
         data: formData,

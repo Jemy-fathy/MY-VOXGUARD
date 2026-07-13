@@ -56,7 +56,10 @@ class _TrustedContactsScreenState extends State<TrustedContactsScreen> {
       final prefs = await SharedPreferences.getInstance();
       final String? token = prefs.getString('token') ?? prefs.getString('auth_token');
 
-      var response = await Dio().get(
+      var response = await Dio(BaseOptions(
+        connectTimeout: const Duration(seconds: 5),
+        receiveTimeout: const Duration(seconds: 5),
+      )).get(
         "${ApiConfig.baseUrl}/trusted-contacts",
         options: Options(
           headers: {
@@ -79,6 +82,9 @@ class _TrustedContactsScreenState extends State<TrustedContactsScreen> {
       }
     } catch (e) {
       await _loadLocalContacts();
+      if (mounted) {
+        setState(() => isLoading = false);
+      }
     }
   }
 
@@ -93,7 +99,10 @@ class _TrustedContactsScreenState extends State<TrustedContactsScreen> {
     try {
       final String? token = prefs.getString('token') ?? prefs.getString('auth_token');
 
-      var response = await Dio().delete(
+      var response = await Dio(BaseOptions(
+        connectTimeout: const Duration(seconds: 5),
+        receiveTimeout: const Duration(seconds: 5),
+      )).delete(
         "${ApiConfig.baseUrl}/trusted-contacts/$id",
         options: Options(
           headers: {
