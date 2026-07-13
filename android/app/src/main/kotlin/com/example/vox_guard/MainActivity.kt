@@ -10,6 +10,9 @@ import android.app.NotificationManager
 import android.app.NotificationChannel
 import android.app.PendingIntent
 import androidx.core.app.NotificationCompat
+import android.os.PowerManager
+import android.media.RingtoneManager
+import android.media.AudioAttributes
 
 class MainActivity : FlutterActivity() {
     private val CHANNEL = "com.example.vox_guard/panic"
@@ -86,6 +89,14 @@ class MainActivity : FlutterActivity() {
 
     private fun showNativeNotification(caller: String, ringtone: String, imgPath: String) {
         try {
+            // Wake up the screen if it is locked/black
+            val powerManager = getSystemService(POWER_SERVICE) as PowerManager
+            val wakeLock = powerManager.newWakeLock(
+                PowerManager.SCREEN_BRIGHT_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP,
+                "VoxGuard:FakeCallWakeUp"
+            )
+            wakeLock.acquire(10000) // Keep screen bright for 10 seconds
+
             val intent = Intent(this, MainActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
                 putExtra("trigger_fake_call", true)
@@ -109,6 +120,7 @@ class MainActivity : FlutterActivity() {
 
             val channelId = "voxguard_fake_call"
             val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+            val soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 val channel = NotificationChannel(
@@ -117,6 +129,11 @@ class MainActivity : FlutterActivity() {
                     NotificationManager.IMPORTANCE_HIGH
                 ).apply {
                     description = "This channel is used to trigger scheduled fake calls."
+                    setSound(soundUri, AudioAttributes.Builder()
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                        .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
+                        .build())
+                    enableVibration(true)
                 }
                 notificationManager.createNotificationChannel(channel)
             }
@@ -130,6 +147,8 @@ class MainActivity : FlutterActivity() {
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setCategory(NotificationCompat.CATEGORY_CALL)
                 .setFullScreenIntent(pendingIntent, true)
+                .setSound(soundUri)
+                .setVibrate(longArrayOf(1000, 1000, 1000, 1000))
                 .setAutoCancel(true)
 
             notificationManager.notify(999, builder.build())
