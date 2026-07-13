@@ -93,8 +93,13 @@ class AppLifecycleReactor extends WidgetsBindingObserver {
 }
 
 void _handleFakeCallTrigger(Map<String, dynamic> data) {
-  final context = navigatorKey.currentContext;
-  if (context == null) return;
+  if (navigatorKey.currentState == null) {
+    // Retry on the next frame since the navigator is not initialized yet
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _handleFakeCallTrigger(data);
+    });
+    return;
+  }
 
   // Prevent duplicate navigations if we are already on an incoming call screen
   bool isAlreadyOnCall = false;
@@ -292,6 +297,12 @@ class _VoxGuardAppState extends State<VoxGuardApp> {
   }
 
   void _navigateToEmergency() {
+    if (navigatorKey.currentState == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _navigateToEmergency();
+      });
+      return;
+    }
     navigatorKey.currentState?.pushNamedAndRemoveUntil(
       '/emergency',
       (route) => false,
