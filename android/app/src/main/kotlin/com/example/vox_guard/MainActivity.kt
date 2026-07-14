@@ -13,6 +13,7 @@ import androidx.core.app.NotificationCompat
 import android.os.PowerManager
 import android.media.RingtoneManager
 import android.media.AudioAttributes
+import android.content.Context
 
 class MainActivity : FlutterActivity() {
     private val CHANNEL = "com.example.vox_guard/panic"
@@ -42,6 +43,13 @@ class MainActivity : FlutterActivity() {
                 result.success(true)
             } else if (call.method == "showSosNotification") {
                 showNativeSosNotification()
+                result.success(true)
+            } else if (call.method == "scheduleNativeFakeCall") {
+                val seconds = call.argument<Int>("seconds") ?: 0
+                val caller = call.argument<String>("caller") ?: "mom"
+                val ringtone = call.argument<String>("ringtone") ?: "ringtone_default"
+                val imgPath = call.argument<String>("imgPath") ?: "images/Woman.png"
+                scheduleAlarm(seconds, caller, ringtone, imgPath)
                 result.success(true)
             } else {
                 result.notImplemented()
@@ -224,6 +232,44 @@ class MainActivity : FlutterActivity() {
                     WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
                 )
             }
+        }
+    }
+
+    private fun scheduleAlarm(seconds: Int, caller: String, ringtone: String, imgPath: String) {
+        val alarmManager = getSystemService(Context.ALARM_SERVICE) as android.app.AlarmManager
+        val intent = Intent(this, FakeCallReceiver::class.java).apply {
+            putExtra("caller", caller)
+            putExtra("ringtone", ringtone)
+            putExtra("imgPath", imgPath)
+        }
+
+        val pendingIntentFlags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
+        } else {
+            PendingIntent.FLAG_UPDATE_CURRENT
+        }
+
+        val pendingIntent = PendingIntent.getBroadcast(
+            this,
+            123,
+            intent,
+            pendingIntentFlags
+        )
+
+        val triggerTime = System.currentTimeMillis() + (seconds * 1000L)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            alarmManager.setExactAndAllowWhileIdle(
+                android.app.AlarmManager.RTC_WAKEUP,
+                triggerTime,
+                pendingIntent
+            )
+        } else {
+            alarmManager.setExact(
+                android.app.AlarmManager.RTC_WAKEUP,
+                triggerTime,
+                pendingIntent
+            )
         }
     }
 }

@@ -90,6 +90,22 @@ void onStart(ServiceInstance service) async {
     String ringtone = event['ringtone'] ?? 'ringtone_default';
     String imgPath = event['imgPath'] ?? 'images/Woman.png';
 
+    if (Platform.isAndroid) {
+      try {
+        const panicChannel = MethodChannel('com.example.vox_guard/panic');
+        await panicChannel.invokeMethod('scheduleNativeFakeCall', {
+          'seconds': seconds,
+          'caller': caller,
+          'ringtone': ringtone,
+          'imgPath': imgPath,
+        });
+        _log('✅ Native exact AlarmManager scheduled successfully.');
+        return; // Return early, AlarmManager handles the callback
+      } catch (e) {
+        _log('⚠️ Failed to schedule native exact AlarmManager, using fallback Timer: $e');
+      }
+    }
+
     Timer(Duration(seconds: seconds), () async {
       // Send event back to main UI thread
       service.invoke('triggerFakeCallNow', {
